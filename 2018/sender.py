@@ -16,7 +16,6 @@ class Sender(object):
     def send(self, data):
         raise NotImplementedError("The base API class has no implementation. Please override and add your own.")
 
-
 class BogoSender(Sender):
 
     def __init__(self):

@@ -2,7 +2,6 @@
 
 import channelsimulator
 
-
 class Receiver(object):
 
     def __init__(self, inbound_port=50005, outbound_port=50006, timeout=10, debug=False):
@@ -24,7 +23,9 @@ class BogoReceiver(Receiver):
 
     def receive(self):
         print("Receiving on port: {} and replying with ACK on port: {}".format(self.inbound_port, self.outbound_port))
+        
         while True:
+
             print self.simulator.u_receive()  # receive data
             self.simulator.u_send(BogoReceiver.ACK_DATA)  # send ACK
 
