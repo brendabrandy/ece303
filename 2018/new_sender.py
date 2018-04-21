@@ -1,18 +1,21 @@
 import sender
-import rand
+import random
 import states as TCP_STATE
+from segGenTest import TCPsegment, TCPsegmentDecode
 
-class NewSender(BogoSender):
+# assume sender is server
+class NewSender(sender.BogoSender):
 
     # Constructor, currently using the default constructor
     # from sender
     def __init__(self):
         super(NewSender, self).__init__()
         self.state = TCP_STATE.IDLE
-        self.snd_pkt = None
+        self.snd_pkt = TCPsegment()
         self.rcv_pkt = None
-        self.client_isn = 0
-        self.server_isn = rand.randint(0,10000)
+        self.rcv_seqnum = 0
+        # See new_receiver.py for setting isn
+        self.snd_seqnum = 0
 
     # Should override BogoSender.send() function
     def send(self, data):
@@ -20,16 +23,22 @@ class NewSender(BogoSender):
             if (self.state == TCP_STATE.IDLE):
                 # Sender is idle, need to initiate TCP connection
                 # with receiver
+                self.simulator.log("(Sender) Sending SYN to Receiver")
+                self.snd_seqnum = random.randint(0, 5000)
+                self.simulator.log("\tSender Sequence Number: " + str(self.snd_seqnum))
                 # Craft SYN TCP Packet
-                print ("State: TCP_STATE.IDLE")
-                self.snd_pkt = packed_bits()
-                self.u_send(self.snd_pkt)
+                self.snd_pkt.SYN(1)                         
+                self.snd_pkt.SrcPort(self.inbound_port)
+                self.snd_pkt.DestPort(self.outbound_port)
+                self.snd_pkt.SeqNum(self.snd_seqnum)     # Set ISN
+                self.snd_pkt.AckNum(0)
+                # Send the TCP Packet
+                self.simulator.u_send(self.snd_pkt.Data(None))
                 self.state = TCP_STATE.SYN_SEND
             
             elif (self.state == TCP_STATE.SYN_SEND):
-                # TODO: What if SYN_SEND is corrupted?
                 # SYN packet is sent, awaiting SYN-ACK from receiver
-                print ("State: TCP_STATE.SYN_SEND")
+                self.simulator.log("(Sender) Waiting for SYN-ACK")
                 self.rcv_pkt = self.simulator.u_receive()
                 # unpack the packet
                 # if sequence number, SYN bit and acknowledgement
@@ -38,9 +47,10 @@ class NewSender(BogoSender):
                 if (True):
                     self.state = TCP_STATE.ESTABLISHED
 
-            elif (self.state == TCP_STATE.ESTABLISHED)
+            elif (self.state == TCP_STATE.ESTABLISHED):
                 # A connection is established between sender and receiver,
                 # can start sending data now
+                self.simulator.log("(Sender) Connection Established")
                 pass
             else:
                 pass
