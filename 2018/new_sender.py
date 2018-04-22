@@ -13,9 +13,9 @@ class NewSender(sender.BogoSender):
         self.state = TCP_STATE.IDLE
         self.snd_pkt = TCPsegment()
         self.rcv_pkt = None
-        self.rcv_seqnum = 0
+        self.seqnum = 0
         # See new_receiver.py for setting isn
-        self.snd_seqnum = 0
+        self.acknum = 0
 
     # Should override BogoSender.send() function
     def send(self, data):
@@ -24,13 +24,13 @@ class NewSender(sender.BogoSender):
                 # Sender is idle, need to initiate TCP connection
                 # with receiver
                 self.simulator.log("(Sender) Sending SYN to Receiver")
-                self.snd_seqnum = random.randint(0, 5000)
-                self.simulator.log("\tSender Sequence Number: " + str(self.snd_seqnum))
+                self.seqnum = random.randint(0, 5000)
+                self.simulator.log("\tSender Sequence Number: " + str(self.seqnum))
                 # Craft SYN TCP Packet
                 self.snd_pkt.SYN(1)                         
                 self.snd_pkt.SrcPort(self.inbound_port)
                 self.snd_pkt.DestPort(self.outbound_port)
-                self.snd_pkt.SeqNum(self.snd_seqnum)     # Set ISN
+                self.snd_pkt.SeqNum(self.seqnum)     # Set ISN
                 self.snd_pkt.AckNum(0)
                 # Send the TCP Packet
                 self.snd_pkt.Pack()
@@ -45,16 +45,17 @@ class NewSender(sender.BogoSender):
                 # if sequence number, SYN bit and acknowledgement
                 # number is correct, return an ACK packet
                 # go to ESTABLISHED state
-                if (self.rcv_pkt.SYN == 1 and
+                if (self.rcv_pkt.SYN == '1' and
                        self.rcv_pkt.AckNum == self.seqnum+1):
                     self.seqnum = self.rcv_pkt.AckNum
                     self.acknum = self.rcv_pkt.SeqNum + 1
-                    self.snd_pkt = TCPSegment()
+                    self.snd_pkt = TCPsegment()
                     self.snd_pkt.SrcPort(self.inbound_port)
                     self.snd_pkt.DestPort(self.outbound_port)
                     self.snd_pkt.SeqNum(self.seqnum)
                     self.snd_pkt.AckNum(self.acknum)
-                    self.simulator.u_send(self.snd_pkt.Data(None))
+                    self.snd_pkt.Pack()
+                    self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
                     self.state = TCP_STATE.ESTABLISHED
             
             elif (self.state == TCP_STATE.ESTABLISHED):

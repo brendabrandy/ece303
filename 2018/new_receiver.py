@@ -40,17 +40,22 @@ class NewReceiver(receiver.BogoReceiver):
                 # packs a SYNACK packet to the receiver
                 self.seqnum = random.randint(0, 5000)
                 self.simulator.log("\t Receiver Sequence Number: " + str(self.seqnum))
+                # Crafts SYNACK packet
+                self.snd_pkt = TCPsegment()
                 self.snd_pkt.SYN(1)
                 self.snd_pkt.SrcPort(self.inbound_port)
                 self.snd_pkt.DestPort(self.outbound_port)
                 self.snd_pkt.SeqNum(self.seqnum)
                 self.snd_pkt.AckNum(self.acknum)
+                self.snd_pkt.Pack()
+                # Send SYNACK packet over simulator channel
+                self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
                 # listens for a confirmation from the receiver
                 rcv_seg = self.simulator.u_receive()
-                self.rcv_pkt = TCPSegmentDecode(rcv_seg)
+                self.rcv_pkt = TCPsegmentDecode(rcv_seg)
                 # if sequence number and acknowledge number is correct
                 # go to ESTABLISHED state
-                if (self.rcv_pkt.SYN == 0 and 
+                if (self.rcv_pkt.SYN == '0' and 
                         self.rcv_pkt.SeqNum == self.acknum
                         and self.rcv_pkt.AckNum == self.seqnum+1):
                     self.seqnum = self.seqnum + 1
@@ -63,7 +68,20 @@ class NewReceiver(receiver.BogoReceiver):
                 self.simulator.log("\t Sequence Number: " + str(self.seqnum))
                 self.simulator.log("\t Acknowledge Num: " + str(self.acknum))
                 while (True):
-                    pass
+                    # Accepts the data
+                    data = self.simulator.u_receive()
+                    self.rcv_pkt = TCPsegmentDecode(rcv_seg)
+                    # if the sequence number and ack number is corrrect
+                    if (self.rcv_pkt.SeqNum == self.ack_num):
+                        # send an ACK back
+                        self.seq_num = self.rcv_pkt.AckNum
+                        self.ack_num = self.rcv_pkt.SeqNum 
+                        # Send an ACK back
+                        self.snd_pkt = TCPSegment()
+                        self.snd_pkt.SrcPort(self.inbound_port)
+                        self.snd_pkt.DestPort(self.outbound_port)
+                        self.snd_pkt.SeqNum(self.seq_num)
+                        self.snd_pkt.AckNum(self.ack_num)
 
             else:
                 pass

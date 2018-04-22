@@ -51,7 +51,6 @@ class ChannelSimulator(object):
             bitstring = "0b"
             for n in xrange(0, len(b_array)):
                 bitstring += (bin(b_array[n])[2:].zfill(8))
-            print bitstring
             return bitstring
 
     # Corrupt bits in the channel (random, swap, and drop errors)
