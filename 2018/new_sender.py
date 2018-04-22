@@ -33,25 +33,38 @@ class NewSender(sender.BogoSender):
                 self.snd_pkt.SeqNum(self.snd_seqnum)     # Set ISN
                 self.snd_pkt.AckNum(0)
                 # Send the TCP Packet
-                self.simulator.u_send(self.snd_pkt.Data(None))
+                self.snd_pkt.Pack()
+                self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
                 self.state = TCP_STATE.SYN_SEND
             
             elif (self.state == TCP_STATE.SYN_SEND):
                 # SYN packet is sent, awaiting SYN-ACK from receiver
                 self.simulator.log("(Sender) Waiting for SYN-ACK")
-                self.rcv_pkt = self.simulator.u_receive()
-                # unpack the packet
+                rcv_seg = self.simulator.u_receive()
+                self.rcv_pkt = TCPsegmentDecode(rcv_seg)
                 # if sequence number, SYN bit and acknowledgement
-                # number is correct
+                # number is correct, return an ACK packet
                 # go to ESTABLISHED state
-                if (True):
+                if (self.rcv_pkt.SYN == 1 and
+                       self.rcv_pkt.AckNum == self.seqnum+1):
+                    self.seqnum = self.rcv_pkt.AckNum
+                    self.acknum = self.rcv_pkt.SeqNum + 1
+                    self.snd_pkt = TCPSegment()
+                    self.snd_pkt.SrcPort(self.inbound_port)
+                    self.snd_pkt.DestPort(self.outbound_port)
+                    self.snd_pkt.SeqNum(self.seqnum)
+                    self.snd_pkt.AckNum(self.acknum)
+                    self.simulator.u_send(self.snd_pkt.Data(None))
                     self.state = TCP_STATE.ESTABLISHED
-
+            
             elif (self.state == TCP_STATE.ESTABLISHED):
                 # A connection is established between sender and receiver,
                 # can start sending data now
                 self.simulator.log("(Sender) Connection Established")
-                pass
+                self.simulator.log("\t Sequence Number: " + str(self.seqnum))
+                self.simulator.log("\t Acknowledge Num: " + str(self.acknum))
+                while(True):
+                    pass
             else:
                 pass
 

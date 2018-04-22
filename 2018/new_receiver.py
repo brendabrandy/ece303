@@ -1,5 +1,5 @@
 import receiver
-import rand
+import random
 import states as TCP_STATE
 from segGenTest import TCPsegment, TCPsegmentDecode
 
@@ -11,14 +11,14 @@ class NewReceiver(receiver.BogoReceiver):
     # Constructor, currently using the default constructor
     # from receiver
     def __init__(self):
-        super(NewReceiver, self).__init__(debug=True)
+        super(NewReceiver, self).__init__()
         self.state = TCP_STATE.LISTEN
-        self.rcv_pkt = None
+        self.rcv_pkt = None         # received packet
         self.snd_pkt = TCPsegment() # make the segment in initializer
         # choose receiver isn. 5000 is an arbitrary number, can be subjected to 
         # change. NOTE: need to deal with this overflowing
-        self.rcv_seqnum = 0 
-        self.snd_seqnum = 0
+        self.seqnum = 0 # receiver sequence number (SEQ Number)
+        self.acknum = 0 # sender sequence number (ACK Number)
 
     # Should override BogoReceiver.receiver() function
     def receive(self):
@@ -27,33 +27,43 @@ class NewReceiver(receiver.BogoReceiver):
                 # Receiver listening the channel for new packets
                 self.simulator.log("(Receiver) Listening for data")
                 rcv_seg = self.simulator.u_receive()
-                self.rcv_pkt = TCPSegmentDecode(rcv_seg)
-                # disassemble the packet 
+                self.rcv_pkt = TCPsegmentDecode(rcv_seg)
                 # if syn bit is set, go to SYN_RECEIVED state
-                if (self.rcv_pkt.SYN == 1):
-                    self.snd_seqnum = self.rcv_pkt.SeqNum
-                    self.simulator.log("\t Sender Sequence Number: %d\n")
+                if (self.rcv_pkt.SYN == '1'):
+                    print("\t Sender Sequence Number: " +  str(self.rcv_pkt.SeqNum))
                     self.state = TCP_STATE.SYN_RECEIVED
+                    self.acknum = self.rcv_pkt.SeqNum + 1
 
             elif (self.state == TCP_STATE.SYN_RECEIVED):
                 self.simulator.log("(Receiver) Receive SYN")
                 # A SYN packet is received from the receiver
                 # packs a SYNACK packet to the receiver
-                self.rcv_seqnum = rand.randint(0, 5000)
-                # make necessary changes
+                self.seqnum = random.randint(0, 5000)
+                self.simulator.log("\t Receiver Sequence Number: " + str(self.seqnum))
+                self.snd_pkt.SYN(1)
+                self.snd_pkt.SrcPort(self.inbound_port)
+                self.snd_pkt.DestPort(self.outbound_port)
+                self.snd_pkt.SeqNum(self.seqnum)
+                self.snd_pkt.AckNum(self.acknum)
                 # listens for a confirmation from the receiver
-                self.rcv_pkt = self.simulator.u_receive()
-                # unpack the bits
+                rcv_seg = self.simulator.u_receive()
+                self.rcv_pkt = TCPSegmentDecode(rcv_seg)
                 # if sequence number and acknowledge number is correct
                 # go to ESTABLISHED state
-                if (True):
+                if (self.rcv_pkt.SYN == 0 and 
+                        self.rcv_pkt.SeqNum == self.acknum
+                        and self.rcv_pkt.AckNum == self.seqnum+1):
+                    self.seqnum = self.seqnum + 1
                     self.state = TCP_STATE.ESTABLISHED
 
             elif (self.state == TCP_STATE.ESTABLISHED):
                 # A connection is established between the sender and receiver
                 # can staart sending data now
                 self.simulator.log("(Receiver) Connection Established")
-                pass
+                self.simulator.log("\t Sequence Number: " + str(self.seqnum))
+                self.simulator.log("\t Acknowledge Num: " + str(self.acknum))
+                while (True):
+                    pass
 
             else:
                 pass

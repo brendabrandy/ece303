@@ -95,7 +95,8 @@ class TCPsegment:     #have to options then data, in that order. Can call other 
 
 class TCPsegmentDecode:
 
-     def __init__(self, inputTCPsegStr):
+    def __init__(self, inputTCPsegStr):
+        inputTCPsegStr = inputTCPsegStr[2:]
         self.inTCP = inputTCPsegStr
         self.SrcPort = int(inputTCPsegStr[0:16],2) 
         self.DestPort = int(inputTCPsegStr[16:32],2)
