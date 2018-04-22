@@ -10,69 +10,85 @@ class TCPsegment:     #have to options then data, in that order. Can call other 
         self.header = np.zeros(shape=(5,32)).astype(int);
         self.headerlen = 5
         self.header[3,0:4] = map( int, list('{0:04b}'.format(self.headerlen)) )
-     
+        self.TCPseg = self.header  
+   
     def SrcPort(self, num):
-        self.header[0,0:16] =  map( int, list('{0:016b}'.format(num)) )                
+        self.header[0,0:16] =  map( int, list('{0:016b}'.format(num)) ) 
+        self.TCPseg = self.header               
    
     def DestPort(self, num):
-        self.header[0,16:32] = map( int, list('{0:016b}'.format(num)) )   
+        self.header[0,16:32] = map( int, list('{0:016b}'.format(num)) )  
+        self.TCPseg = self.header 
  
     def SeqNum(self, num):
         self.header[1,:] = map( int, list('{0:032b}'.format(num)) )   
+        self.TCPseg = self.header
   
     def AckNum(self, num):
-        self.header[2,:] = map( int, list('{0:032b}'.format(num)) )      
+        self.header[2,:] = map( int, list('{0:032b}'.format(num)) )  
+        self.TCPseg = self.header    
   
     def URG(self, bit):
         self.header[3,10] = bit
+        self.TCPseg = self.header
   
     def ACK(self, bit):
         self.header[3,11] = bit
+        self.TCPseg = self.header
 
     def PSH(self, bit):
         self.header[3,12] = bit
+        self.TCPseg = self.header
 
     def RST(self, bit):
         self.header[3,13] = bit
+        self.TCPseg = self.header
 
     def SYN(self, bit):
         self.header[3,14] = bit
+        self.TCPseg = self.header
 
     def FIN(self, bit):
         self.header[3,15] = bit
+        self.TCPseg = self.header
 
     def RcvWin(self, num):
         self.header[3,16:32] = map( int, list('{0:016b}'.format(num)) )  
+        self.TCPseg = self.header
 
     def Checksum(self, bits):
         self.header[4,0:16] = bits
+        self.TCPseg = self.header
 
     def UrgDataPtr(self, bits):
         self.header[4,16:32] = bits
+        self.TCPseg = self.header
 
-    def Options(self, options):
+    def SetOptions(self, options):
         optionsSize = len(options);
         o1 = ((optionsSize/32)+1)
         o2 = 32*o1
         options = options.ljust(o2, '0')
         options = map(int, list(options))   
         options = np.reshape(options,(o1,32))
-        self.header = np.vstack((self.header,options))
+        self.options = options
+        self.header = np.vstack((self.header,self.options))
         self.headerlen = 5+o1
         self.header[3,0:4] = map( int, list('{0:04b}'.format(self.headerlen)) )
         self.TCPseg = self.header
    
-    def Data(self, data):
+    def SetData(self, data):
         dataSize = len(data);
         d1 = ((dataSize/32)+1)
         d2 = 32*d1
         data = data.ljust(d2, '2') #2 represents a NaN
         data = map(int, list(data))
         data = np.reshape(data,(d1,32))
-        self.TCPseg = np.vstack((self.header,data))
+        self.data = data
+        self.TCPseg = np.vstack((self.header,self.data))
 
-    def Pack(self, inputmatrix):
-        flat = inputmatrix.flatten()
+    def Pack(self):
+        flat = self.TCPseg.flatten()
         flat = flat[flat!=2]
         self.TCPsegBitStr  = "".join(str(e) for e in flat)
         self.TCPsegBitStr = "0b" + self.TCPsegBitStr
@@ -95,9 +111,16 @@ class TCPsegmentDecode:
         self.RcvWin = int(inputTCPsegStr[112:128],2)
         self.Checksum = int(inputTCPsegStr[128:144],2)
         self.UrgDataPtr = int(inputTCPsegStr[144:160],2)
-        self.Options = inputTCPsegStr[5*32:self.headerlen*32]
-        self.DataBits = inputTCPsegStr[self.headerlen*32:]
-        self.Data = int(self.DataBits,2)
+        if self.headerlen == 5:
+            self.Options = None
+        else:
+            self.Options = inputTCPsegStr[5*32:self.headerlen*32]
+        if not inputTCPsegStr[self.headerlen*32:] :
+            self.DataBits = None
+            self.Data = None
+        else:    
+            self.DataBits = inputTCPsegStr[self.headerlen*32:]
+            self.Data = int(self.DataBits,2)
     
 
 if __name__ == "__main__":
@@ -108,15 +131,15 @@ if __name__ == "__main__":
     c1.RcvWin(20)
     c1.ACK(1)
     print c1.headerlen
-    c1.Options('001110101111000111111111111111111111111111110111111100000000') 
+    c1.SetOptions('001110101111000111111111111111111111111111110111111100000000') 
     # have to options then data, in that order. Can modify this later.
     # if don't want Options section, don't declare it 
     print c1.headerlen
-    c1.Data(bin(31980)[2:])  #payload here
+    c1.SetData(bin(31980)[2:])  #payload here
     print c1.header #no data appended yet
     print '-------------------------------------------------------------------------------------'
     print c1.TCPseg  #the final TCP Segment! #Note: 2 represents a NaN
-    c1.Pack(c1.TCPseg)
+    c1.Pack()
     print c1.TCPsegBitStr
 
     ### Testing Decoder ###
