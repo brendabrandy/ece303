@@ -60,7 +60,8 @@ class TCPsegment:     #have to options then data, in that order. Can call other 
         self.header = np.vstack((self.header,options))
         self.headerlen = 5+o1
         self.header[3,0:4] = map( int, list('{0:04b}'.format(self.headerlen)) )
-
+        self.TCPseg = self.header
+   
     def Data(self, data):
         dataSize = len(data);
         d1 = ((dataSize/32)+1)
@@ -70,7 +71,8 @@ class TCPsegment:     #have to options then data, in that order. Can call other 
         data = np.reshape(data,(d1,32))
         self.TCPseg = np.vstack((self.header,data))
 
-        flat = self.TCPseg.flatten()
+    def Pack(self, inputmatrix):
+        flat = inputmatrix.flatten()
         flat = flat[flat!=2]
         self.TCPsegBitStr  = "".join(str(e) for e in flat)
         self.TCPsegBitStr = "0b" + self.TCPsegBitStr
@@ -114,6 +116,7 @@ if __name__ == "__main__":
     print c1.header #no data appended yet
     print '-------------------------------------------------------------------------------------'
     print c1.TCPseg  #the final TCP Segment! #Note: 2 represents a NaN
+    c1.Pack(c1.TCPseg)
     print c1.TCPsegBitStr
 
     ### Testing Decoder ###
