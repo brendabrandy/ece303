@@ -53,7 +53,7 @@ class NewSender(sender.BogoSender):
                 # if sequence number, SYN bit and acknowledgement
                 # number is correct, return an ACK packet
                 # go to ESTABLISHED state
-                if (self.rcv_pkt.syn == '1' and
+                if (self.rcv_pkt.syn == 1 and
                        self.rcv_pkt.acknum == self.seqnum+1):
                     self.seqnum = self.rcv_pkt.acknum
                     self.acknum = self.rcv_pkt.seqnum + 1
