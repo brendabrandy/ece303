@@ -1,7 +1,7 @@
 import sender
 import random
 import states as TCP_STATE
-from segGenTest import TCPsegment, TCPsegmentDecode
+from segGenTest import TCPsegment
 
 # assume sender is server
 class NewSender(sender.BogoSender):
@@ -11,11 +11,13 @@ class NewSender(sender.BogoSender):
     def __init__(self):
         super(NewSender, self).__init__()
         self.state = TCP_STATE.IDLE
-        self.snd_pkt = TCPsegment()
-        self.rcv_pkt = None
+        self.snd_pkt = TCPsegment(0,0,0,0)
+        self.rcv_pkt = TCPsegment(0,0,0,0)
         self.seqnum = 0
         # See new_receiver.py for setting isn
         self.acknum = 0
+        # Timeout for retransmission. Set arbitrarily to 10
+        self.timeout = 10
         self.mss = 2    # maximum segment size per TCP packet
        
     # Should override BogoSender.send() function
@@ -35,37 +37,32 @@ class NewSender(sender.BogoSender):
                 self.seqnum = random.randint(0, 5000)
                 self.simulator.log("\tSender Sequence Number: " + str(self.seqnum))
                 # Craft SYN TCP Packet
-                self.snd_pkt.SYN(1)                         
-                self.snd_pkt.SrcPort(self.inbound_port)
-                self.snd_pkt.DestPort(self.outbound_port)
-                self.snd_pkt.SeqNum(self.seqnum)     # Set ISN
-                self.snd_pkt.AckNum(0)
+                self.acknum = 0
+                self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+                                          self.seqnum, self.acknum, syn=1)                  
                 # Send the TCP Packet
-                self.snd_pkt.Pack()
-                self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
+                bitstr = self.snd_pkt.pack()
+                self.simulator.u_send(bitstr)
                 self.state = TCP_STATE.SYN_SEND
             
             elif (self.state == TCP_STATE.SYN_SEND):
                 # SYN packet is sent, awaiting SYN-ACK from receiver
                 self.simulator.log("(Sender) Waiting for SYN-ACK")
                 rcv_seg = self.simulator.u_receive()
-                self.rcv_pkt = TCPsegmentDecode(rcv_seg)
+                self.rcv_pkt.unpack(rcv_seg)
                 # if sequence number, SYN bit and acknowledgement
                 # number is correct, return an ACK packet
                 # go to ESTABLISHED state
-                if (self.rcv_pkt.SYN == '1' and
-                       self.rcv_pkt.AckNum == self.seqnum+1):
-                    self.seqnum = self.rcv_pkt.AckNum
-                    self.acknum = self.rcv_pkt.SeqNum + 1
-                    self.snd_pkt = TCPsegment()
-                    self.snd_pkt.SrcPort(self.inbound_port)
-                    self.snd_pkt.DestPort(self.outbound_port)
-                    self.snd_pkt.SeqNum(self.seqnum)
-                    self.snd_pkt.AckNum(self.acknum)
+                if (self.rcv_pkt.syn == '1' and
+                       self.rcv_pkt.acknum == self.seqnum+1):
+                    self.seqnum = self.rcv_pkt.acknum
+                    self.acknum = self.rcv_pkt.seqnum + 1
                     curr_data_packet = self.get_data()
-                    self.snd_pkt.SetData(curr_data_packet)
-                    self.snd_pkt.Pack()
-                    self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
+                    self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+                                              self.seqnum, self.acknum,
+                                              data=curr_data)
+                    bitstr = self.snd_pkt.pack()
+                    self.simulator.u_send(bitstr)
                     self.state = TCP_STATE.ESTABLISHED
             
             elif (self.state == TCP_STATE.ESTABLISHED):
@@ -77,8 +74,8 @@ class NewSender(sender.BogoSender):
                 while (True):
                     # Waiting for an ACK packet reception
                     rcv_seg = self.simulator.u_receive()
-                    self.rcv_pkt = TCPsegmentDecode(rcv_seg)
-                    if (self.rcv_pkt.SeqNum == self.acknum):
+                    self.rcv_pkt.unpack(rcv_seg)
+                    if (self.rcv_pkt.seqnum == self.acknum):
                         # if ACK is successful
                         self.simulator.log("(Sender) ACK Successful!")
                         if (self.data_ind*8 >= len(self.data)):
@@ -88,20 +85,18 @@ class NewSender(sender.BogoSender):
                            self.state = TCP_STATE.FIN_WAIT_1
                            break
                         else: 
-                            curr_data_packet = self.get_data()
+                            curr_data = self.get_data()
                             num_bytes = len(curr_data_packet)/8
-                            self.seqnum = self.rcv_pkt.AckNum
-                            self.acknum = self.rcv_pkt.SeqNum + num_bytes
-                            self.snd_pkt = TCPsegment()
-                            self.snd_pkt.SrcPort(self.inbound_port)
-                            self.snd_pkt.DestPort(self.outbound_port)
-                            self.snd_pkt.SeqNum(self.seqnum)
-                            self.snd_pkt.AckNum(self.acknum)
-                            self.snd_pkt.SetData(curr_data_packet)
-                            self.snd_pkt.Pack()
-                            self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
+                            self.seqnum = self.rcv_pkt.acknum
+                            self.acknum = self.rcv_pkt.seqnum + num_bytes
+                            self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+                                                      self.seqnum, self.acknum,
+                                                      data = curr_data)
+                            bitstr = self.snd_pkt.pack()
+                            self.simulator.u_send(self.snd_pkt.bitstr)
             
                     # Need to do something if they are not the same
+
             elif (self.state == TCP_STATE.FIN_WAIT_1):
                 self.simulator.log("(Sender) In final waiting state")
                 while(True):
@@ -121,6 +116,7 @@ class NewSender(sender.BogoSender):
             new_data = self.data[self.data_ind*8: (self.data_ind+self.mss) * 8]
             self.data_ind += self.mss
         return new_data
+
 
 if __name__ == "__main__":
     # Test NewSender

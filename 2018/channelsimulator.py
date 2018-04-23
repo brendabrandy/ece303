@@ -57,8 +57,10 @@ class ChannelSimulator(object):
     def corrupt(self, bits):
         self.log("Sending bits through corrupting channel")
         random_errors = randint(0, 5000)
-        swap = randint(0, 5000)
-        drop = randint(0, 5000)
+        # swap = randint(0, 5000)
+        # drop = randint(0, 5000)
+        swap = 0
+        drop = 0
         if random_errors <= 10:
             self.log("Bits before swap: " + bits)
             bit_list = list(bits[2:])
@@ -76,8 +78,7 @@ class ChannelSimulator(object):
 
     # Unreliable Send
     def u_send(self, bits):
-        # self.put_to_socket(self.corrupt(bits))
-        self.put_to_socket(bits)
+        self.put_to_socket(self.corrupt(bits))
 
     # Unreliable Receive
     def u_receive(self):

@@ -4,7 +4,7 @@ import channelsimulator
 
 class Receiver(object):
 
-    def __init__(self, inbound_port=50005, outbound_port=50006, timeout=10000, debug=True):
+    def __init__(self, inbound_port=50005, outbound_port=50006, timeout=10, debug=True):
         self.inbound_port = inbound_port
         self.outbound_port = outbound_port
         self.simulator = channelsimulator.ChannelSimulator(inbound_port=inbound_port, outbound_port=outbound_port, debug=debug)
