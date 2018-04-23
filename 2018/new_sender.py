@@ -54,6 +54,7 @@ class NewSender(sender.BogoSender):
                     self.snd_pkt.DestPort(self.outbound_port)
                     self.snd_pkt.SeqNum(self.seqnum)
                     self.snd_pkt.AckNum(self.acknum)
+                    self.snd_pkt.SetData(data)
                     self.snd_pkt.Pack()
                     self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
                     self.state = TCP_STATE.ESTABLISHED
@@ -64,8 +65,13 @@ class NewSender(sender.BogoSender):
                 self.simulator.log("(Sender) Connection Established")
                 self.simulator.log("\t Sequence Number: " + str(self.seqnum))
                 self.simulator.log("\t Acknowledge Num: " + str(self.acknum))
-                while(True):
-                    pass
+                while (True):
+                    # Waiting for an ACK packet reception
+                    rcv_seg = self.simulator.u_receive()
+                    self.rcv_pkt = TCPsegmentDecode(rcv_seg)
+                    if (self.rcv_pkt.SeqNum == self.acknum):
+                        print "ACK SUCCESSFULLY"
+
             else:
                 pass
 
@@ -73,4 +79,5 @@ class NewSender(sender.BogoSender):
 if __name__ == "__main__":
     # Test NewSender
     sndr = NewSender()
-    sndr.send(bin(5678))
+
+    sndr.send('{0:08b}'.format(5))

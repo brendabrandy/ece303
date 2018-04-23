@@ -68,21 +68,24 @@ class NewReceiver(receiver.BogoReceiver):
                 self.simulator.log("\t Sequence Number: " + str(self.seqnum))
                 self.simulator.log("\t Acknowledge Num: " + str(self.acknum))
                 while (True):
-                    # Accepts the data
-                    data = self.simulator.u_receive()
-                    self.rcv_pkt = TCPsegmentDecode(rcv_seg)
                     # if the sequence number and ack number is corrrect
-                    if (self.rcv_pkt.SeqNum == self.ack_num):
+                    if (self.rcv_pkt.SeqNum == self.acknum):
                         # send an ACK back
-                        self.seq_num = self.rcv_pkt.AckNum
-                        self.ack_num = self.rcv_pkt.SeqNum 
-                        # Send an ACK back
-                        self.snd_pkt = TCPSegment()
+                        self.seqnum = self.rcv_pkt.AckNum
+                        self.acknum = self.rcv_pkt.SeqNum + 1 
+                        self.snd_pkt = TCPsegment()
                         self.snd_pkt.SrcPort(self.inbound_port)
                         self.snd_pkt.DestPort(self.outbound_port)
-                        self.snd_pkt.SeqNum(self.seq_num)
-                        self.snd_pkt.AckNum(self.ack_num)
-
+                        self.snd_pkt.SeqNum(self.seqnum)
+                        self.snd_pkt.AckNum(self.acknum)
+                        self.snd_pkt.Pack()
+                        self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
+                    # Accepts the data
+                    data = self.rcv_pkt.Data
+                    print data
+                    rcv_seg = self.simulator.u_receive()
+                    self.rcv_pkt = TCPsegmentDecode(rcv_seg)
+                   
             else:
                 pass
 
