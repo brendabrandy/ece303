@@ -71,8 +71,11 @@ class NewReceiver(receiver.BogoReceiver):
                     # if the sequence number and ack number is corrrect
                     if (self.rcv_pkt.SeqNum == self.acknum):
                         # send an ACK back
+                        num_bytes = len(self.rcv_pkt.DataBits)
+                        data = self.rcv_pkt.Data
+                        self.simulator.log("(Receiver) Received " +str(num_bytes) + " bytes")
                         self.seqnum = self.rcv_pkt.AckNum
-                        self.acknum = self.rcv_pkt.SeqNum + 1 
+                        self.acknum = self.rcv_pkt.SeqNum + num_bytes 
                         self.snd_pkt = TCPsegment()
                         self.snd_pkt.SrcPort(self.inbound_port)
                         self.snd_pkt.DestPort(self.outbound_port)
@@ -81,8 +84,6 @@ class NewReceiver(receiver.BogoReceiver):
                         self.snd_pkt.Pack()
                         self.simulator.u_send(self.snd_pkt.TCPsegBitStr)
                     # Accepts the data
-                    data = self.rcv_pkt.Data
-                    print data
                     rcv_seg = self.simulator.u_receive()
                     self.rcv_pkt = TCPsegmentDecode(rcv_seg)
                    
