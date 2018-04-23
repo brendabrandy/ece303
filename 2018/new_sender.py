@@ -42,6 +42,7 @@ class NewSender(sender.BogoSender):
                                           self.seqnum, self.acknum, syn=1)                  
                 # Send the TCP Packet
                 bitstr = self.snd_pkt.pack()
+                print len(bitstr)
                 self.simulator.u_send(bitstr)
                 self.state = TCP_STATE.SYN_SEND
             
@@ -57,7 +58,7 @@ class NewSender(sender.BogoSender):
                        self.rcv_pkt.acknum == self.seqnum+1):
                     self.seqnum = self.rcv_pkt.acknum
                     self.acknum = self.rcv_pkt.seqnum + 1
-                    curr_data_packet = self.get_data()
+                    curr_data = self.get_data()
                     self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                               self.seqnum, self.acknum,
                                               data=curr_data)
@@ -86,14 +87,14 @@ class NewSender(sender.BogoSender):
                            break
                         else: 
                             curr_data = self.get_data()
-                            num_bytes = len(curr_data_packet)/8
+                            num_bytes = len(curr_data)/8
                             self.seqnum = self.rcv_pkt.acknum
                             self.acknum = self.rcv_pkt.seqnum + num_bytes
                             self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                                       self.seqnum, self.acknum,
                                                       data = curr_data)
                             bitstr = self.snd_pkt.pack()
-                            self.simulator.u_send(self.snd_pkt.bitstr)
+                            self.simulator.u_send(bitstr)
             
                     # Need to do something if they are not the same
 

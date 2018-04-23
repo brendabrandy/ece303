@@ -78,7 +78,8 @@ class ChannelSimulator(object):
 
     # Unreliable Send
     def u_send(self, bits):
-        self.put_to_socket(self.corrupt(bits))
+        self.put_to_socket(bits)
+        # self.put_to_socket(self.corrupt(bits))
 
     # Unreliable Receive
     def u_receive(self):

@@ -29,8 +29,8 @@ class NewReceiver(receiver.BogoReceiver):
                 rcv_seg = self.simulator.u_receive()
                 self.rcv_pkt.unpack(rcv_seg)
                 # if syn bit is set, go to SYN_RECEIVED state
-                if (self.rcv_pkt.syn == '1'):
-                    print("\t Sender Sequence Number: " +  str(self.rcv_pkt.seqnum))
+                if (self.rcv_pkt.syn == 1):
+                    self.simulator.log("\t Sender Sequence Number: " +  str(self.rcv_pkt.seqnum))
                     self.state = TCP_STATE.SYN_RECEIVED
                     self.acknum = self.rcv_pkt.seqnum + 1
 
@@ -44,7 +44,7 @@ class NewReceiver(receiver.BogoReceiver):
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                           self.seqnum, self.acknum,syn=1)
                 
-                bistr = self.snd_pkt.pack()
+                bitstr = self.snd_pkt.pack()
                 # Send SYNACK packet over simulator channel
                 self.simulator.u_send(bitstr)
                 # listens for a confirmation from the receiver

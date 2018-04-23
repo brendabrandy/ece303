@@ -8,7 +8,7 @@ class TCPsegment:
 
     def __init__(self, srcport, destport, seqnum, acknum, headerlen=5,
                  urg=0, ack=0, psh=0,rst=0, syn=0, fin=0, rcvwin= 0,
-                 urgdataptr="0"*16, data):
+                 urgdataptr="0"*16, data=""):
         # Initializer, only four parameters are required: srcport, destport,
         # seqnum and acknum, other parameters, if not specified, are initialized 
         # to their default values
@@ -51,10 +51,12 @@ class TCPsegment:
         self.header += str(self.rst)
         self.header += str(self.syn)
         self.header += str(self.fin)
+        self.header += '{0:016b}'.format(self.rcvwin)
         self.header += self.checksum
         self.header += self.urgdataptr
-        self.tcp_seg_bitstr = self.header + self.options + self.data
+        self.tcp_seg_bitstr = "0b"+self.header + self.options + self.data
         return self.tcp_seg_bitstr 
+    
     # update options and headerlen
     # previous options will be overwritten 
     def set_options(self, options):
@@ -82,11 +84,11 @@ class TCPsegment:
         self.fin = int(self.tcp_seg_bitstr[111],2)
         self.headerlen = int(self.tcp_seg_bitstr[96:100],2)
         self.rcvwin = int(self.tcp_seg_bitstr[112:128],2)
-        self.checksum = self.tcp_seg_bitstr[128:144],2)
-        self.urgdataptr = self.tcp_seg_bitstr[144:160],2)
+        self.checksum = self.tcp_seg_bitstr[128:144]
+        self.urgdataptr = self.tcp_seg_bitstr[144:160]
         if self.headerlen != 5:
             self.options = self.tcp_seg_bitstr[5*32:self.headerlen*32]
-        if inputTCPsegStr[self.headerlen*32:] :
+        if input_str[self.headerlen*32:] :
             self.data = self.tcp_seg_bitstr[self.headerlen*32:]
 
 """
