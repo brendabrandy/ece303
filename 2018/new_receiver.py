@@ -1,5 +1,6 @@
 import receiver
 import random
+import socket
 import states as TCP_STATE
 from segGenTest import TCPsegment
 
@@ -19,6 +20,7 @@ class NewReceiver(receiver.BogoReceiver):
         # change. NOTE: need to deal with this overflowing
         self.seqnum = 0 # receiver sequence number (SEQ Number)
         self.acknum = 0 # sender sequence number (ACK Number)
+        self.timeout = 10
 
     # Should override BogoReceiver.receiver() function
     def receive(self):
@@ -26,8 +28,15 @@ class NewReceiver(receiver.BogoReceiver):
             if (self.state == TCP_STATE.LISTEN):
                 # Receiver listening the channel for new packets
                 self.simulator.log("(Receiver) Listening for data")
-                rcv_seg = self.simulator.u_receive()
-                self.rcv_pkt.unpack(rcv_seg)
+                while(True):
+                    try:
+                        rcv_seg = self.simulator.u_receive()
+                        self.rcv_pkt.unpack(rcv_seg)
+                        if (self.rcv_pkt.check_checksum()):
+                            break
+                    except socket.timeout:
+                        self.simulator.log("(Receiver) Timed out!")
+
                 # if syn bit is set, go to SYN_RECEIVED state
                 if (self.rcv_pkt.syn == 1):
                     self.simulator.log("\t Sender Sequence Number: " +  str(self.rcv_pkt.seqnum))

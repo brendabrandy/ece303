@@ -51,10 +51,15 @@ class TCPsegment:
         self.header += str(self.rst)
         self.header += str(self.syn)
         self.header += str(self.fin)
+        self.header += "0"*16
         self.header += '{0:016b}'.format(self.rcvwin)
-        self.header += self.checksum
         self.header += self.urgdataptr
-        self.tcp_seg_bitstr = "0b"+self.header + self.options + self.data
+        if (len(self.data) % 16 != 0):
+            # zero pad data if data is not 16-bit aligned
+            self.data += "0"*(16-(len(self.data)%16))
+        self.tcp_seg_bitstr = self.header + self.options + self.data
+        self._make_checksum()
+        self.tcp_seg_bitstr = "0b" + self.tcp_seg_bitstr
         return self.tcp_seg_bitstr 
     
     # update options and headerlen
@@ -91,50 +96,56 @@ class TCPsegment:
         if input_str[self.headerlen*32:] :
             self.data = self.tcp_seg_bitstr[self.headerlen*32:]
 
-"""
-class TCPsegmentDecode:
+    # generate a checksum for the packet
+    # when the checksum is generated, the checksum portion is assumed to be zero
+    def _make_checksum(self):
+        for i in range(0,len(self.tcp_seg_bitstr),16):
+            # add every 16bit word with wrap around
+            self.checksum = self.bin_add_1(self.checksum, self.tcp_seg_bitstr[i:i+16])
+        self.tcp_seg_bitstr = self.tcp_seg_bitstr[0:128] + self.ones_comp(self.checksum) \
+                                + self.tcp_seg_bitstr[144:]
+        self.header = self.header[0:128] + self.ones_comp(self.checksum)\
+                            + self.tcp_seg_bitstr[144:]
 
-    def __init__(self, inputTCPsegStr):
-        inputTCPsegStr = inputTCPsegStr[2:]
-        self.inTCP = inputTCPsegStr
-        self.SrcPort = int(inputTCPsegStr[0:16],2) 
-        self.DestPort = int(inputTCPsegStr[16:32],2)
-        self.SeqNum = int(inputTCPsegStr[33:64],2)
-        self.AckNum = int(inputTCPsegStr[64:96],2)
-        self.headerlen = int(inputTCPsegStr[96:100],2)
-        self.URG = inputTCPsegStr[106]
-        self.ACK = inputTCPsegStr[107]
-        self.PSH = inputTCPsegStr[108]
-        self.RST = inputTCPsegStr[109]
-        self.SYN = inputTCPsegStr[110]
-        self.FIN = inputTCPsegStr[111]
-        self.RcvWin = int(inputTCPsegStr[112:128],2)
-        self.Checksum = int(inputTCPsegStr[128:144],2)
-        self.UrgDataPtr = int(inputTCPsegStr[144:160],2)
-        if self.headerlen == 5:
-            self.Options = None
+    # check checksum string and make sure it is correct
+    # if they all add to 1111 1111 1111 1111, then it must be correct
+    def check_checksum(self):
+        temp_checksum = "0"*16
+        for i in range(0, len(self.tcp_seg_bitstr),16):
+            temp_checksum = self.bin_add_1(temp_checksum, self.tcp_seg_bitstr[i:i+16])
+        if (temp_checksum == "1"*16):
+            return True
         else:
-            self.Options = inputTCPsegStr[5*32:self.headerlen*32]
-        if not inputTCPsegStr[self.headerlen*32:] :
-            self.DataBits = None
-            self.Data = None
-        else:    
-            self.DataBits = inputTCPsegStr[self.headerlen*32:]
-            self.Data = int(self.DataBits,2)
-    
-"""
-if __name__ == "__main__":
-    #### Testing Encoder ###
-    c1 = TCPsegment(88,55)
-    c1.rcv_win = 20
-    c1.ack = 1
-    print c1.headerlen
-    c1.SetOptions('001110101111000111111111111111111111111111110111111100000000') 
-    # have to options then data, in that order. Can modify this later.
-    # if don't want Options section, don't declare it 
-    print c1.headerlen
-    c1.data = bin(31980)[2:]  #payload here
-    print '-------------------------------------------------------------------------------------'
-    c1.pack()
-    print c1.tcp_seg_bitstr
+            return False
 
+    # function for converting ones complement
+    # @param n1 is the string for conversion
+    def ones_comp(self, n1):
+        final = ""
+        for i in n1:
+            if (i == '1'):
+                final += '0'
+            else:
+                final += '1'
+        return final
+
+    # function for binary addition
+    # @param n1 is first string
+    # @param n2 is second string
+    def bin_add_1(self, n1, n2):
+        mod_val = 2**16
+        res = int(n1,2) + int(n2,2)
+        fin_str = '{0:016b}'.format(res % mod_val)
+        return fin_str
+
+if __name__ == "__main__":
+    c1 = TCPsegment(0,0,0,0)
+    # TEST: CHECKSUM with example in book
+    # add1 = 1011101110110101
+    # add2 = 0100101011000010 
+    add1 = c1.bin_add_1("0110011001100000","0101010101010101")
+    add2 = c1.bin_add_1(add1, "1000111100001100")
+    if (add1 == "1011101110110101" and add2 == "0100101011000001"):
+        print "Test: bin_add_1 pass"
+    else:
+        print "Test: bin_add_1 fails"

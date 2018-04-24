@@ -42,7 +42,6 @@ class NewSender(sender.BogoSender):
                                           self.seqnum, self.acknum, syn=1)                  
                 # Send the TCP Packet
                 bitstr = self.snd_pkt.pack()
-                print len(bitstr)
                 self.simulator.u_send(bitstr)
                 self.state = TCP_STATE.SYN_SEND
             
