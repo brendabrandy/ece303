@@ -163,4 +163,4 @@ if __name__ == "__main__":
     assert c2.rst == 0
     assert c2.ack == 0
     assert c2.urg == 0
-
+    assert c2.data == bytearray([68,65,84,65])
