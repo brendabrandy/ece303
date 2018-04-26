@@ -8,5 +8,11 @@
 
 ## Todo list
 * Flow Control
-* Starting and Ending Data transmission
-* 
+* Ending Data transmission
+* Go-Back-N in case of packet swap
+* Multiple sender multiple receiver
+
+## Notable Stuff
+* Error detection
+* Checksum calculation
+* Timeouts for packet drops 
