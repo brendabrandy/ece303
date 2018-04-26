@@ -116,8 +116,10 @@ class ChannelSimulator(object):
         if self.debug:
             logging.debug("Sending bytes through corrupting channel")
         random_errors = uniform(0, 1)
-        swap = uniform(0, 1)
-        drop = uniform(0, 1)
+        # swap = uniform(0, 1)
+        swap = 1
+        # drop = uniform(0, 1)
+        drop = 1
         corrupted = deepcopy(data_bytes)
         if drop < drop_error_prob:
             if self.debug:

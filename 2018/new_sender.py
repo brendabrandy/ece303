@@ -1,7 +1,6 @@
 import sender
 import random
 import socket
-import states as TCP_STATE
 from segGenTest import TCPsegment
 
 # assume sender is server
@@ -11,10 +10,10 @@ class NewSender(sender.BogoSender):
     # from sender
     def __init__(self):
         super(NewSender, self).__init__()
-        self.state = TCP_STATE.IDLE
         self.snd_pkt = TCPsegment(0,0,0,0)
         self.rcv_pkt = TCPsegment(0,0,0,0)
         self.seqnum = 0
+        self.isn = 1000
         # See new_receiver.py for setting isn
         self.acknum = 0
         # Timeout for retransmission. Set arbitrarily to 10
@@ -30,19 +29,19 @@ class NewSender(sender.BogoSender):
         # through a window
         self.data_ind = 0                    # data index to check how many bytes are sent
         self.data = data
-        self.seqnum = 1000
+        self.seqnum = self.isn
         while (True):   
             # A connection is established between sender and receiver,
             # can start sending data now
-            print ("\t Sequence Number: " + str(self.seqnum))
-            print ("\t Acknowledge Num: " + str(self.acknum))
+            print ("SEQ: " + str(self.seqnum))
+            print ("ACK: " + str(self.acknum))
 
             # Send a new packet
-            if (self.data_ind*8 < len(self.data)):
+            if (self.data_ind*8 <= len(self.data)):
                 # if there is more data to send, then send more data
                 curr_data, num_bytes = self.get_data()
-                self.seqnum = self.rcv_pkt.acknum
-                self.acknum = self.rcv_pkt.seqnum + num_bytes
+                self.seqnum = self.isn + self.data_ind*8
+                self.acknum = self.rcv_pkt.seqnum 
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                           self.seqnum, self.acknum,
                                           data = curr_data)
@@ -50,6 +49,7 @@ class NewSender(sender.BogoSender):
                 self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
             
             else:
+                # Finished sending all data, return the function
                 return
             while(True):
                 try:
@@ -57,10 +57,10 @@ class NewSender(sender.BogoSender):
                     print("(Sender) Wait for ACK packet")
                     rcv_seg = self.simulator.u_receive()
                     self.rcv_pkt.unpack(rcv_seg)
-                    if (not self.rcv_pkt.check_checksum()):
+                    if (not self.rcv_pkt.check_checksum(str(rcv_seg))):
                         print("(Sender) Checksum incorrect! Drop packet")
-                    
-                    if (self.rcv_pkt.check_checksum()):
+                    if (self.rcv_pkt.check_checksum(str(rcv_seg))):
+                        self.seqnum += self.data_ind
                         break
                 except socket.timeout:
                     # Condition : TIMEOUT
@@ -69,8 +69,9 @@ class NewSender(sender.BogoSender):
                     self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
             
 
+
     def get_data(self):
-        if ((self.data_ind + self.mss) > len(self.data) / 8):
+        if ((self.data_ind + self.mss) > len(self.data)):
             # if the last few segments do not meet mss, just send
             # whatever is remaining 
             new_data = self.data[self.data_ind*8:]
