@@ -59,9 +59,10 @@ class ChannelSimulator(object):
         random_errors = randint(0, 5000)
         # swap = randint(0, 5000)
         # drop = randint(0, 5000)
-        swap = 0
-        drop = 0
-        if random_errors <= 10:
+        swap = 11
+        drop = 11
+        print random_errors
+        if random_errors <= 2500:
             self.log("Bits before swap: " + bits)
             bit_list = list(bits[2:])
             for n in xrange(0, randint(0, len(bit_list) / 3)):
@@ -78,8 +79,7 @@ class ChannelSimulator(object):
 
     # Unreliable Send
     def u_send(self, bits):
-        self.put_to_socket(bits)
-        # self.put_to_socket(self.corrupt(bits))
+        self.put_to_socket(self.corrupt(bits))
 
     # Unreliable Receive
     def u_receive(self):

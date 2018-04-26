@@ -113,6 +113,7 @@ class TCPsegment:
         temp_checksum = "0"*16
         for i in range(0, len(self.tcp_seg_bitstr),16):
             temp_checksum = self.bin_add_1(temp_checksum, self.tcp_seg_bitstr[i:i+16])
+        print temp_checksum
         if (temp_checksum == "1"*16):
             return True
         else:

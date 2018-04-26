@@ -1,5 +1,6 @@
 import sender
 import random
+import socket
 import states as TCP_STATE
 from segGenTest import TCPsegment
 
@@ -42,28 +43,37 @@ class NewSender(sender.BogoSender):
                                           self.seqnum, self.acknum, syn=1)                  
                 # Send the TCP Packet
                 bitstr = self.snd_pkt.pack()
-                self.simulator.u_send(bitstr)
+                self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
                 self.state = TCP_STATE.SYN_SEND
             
             elif (self.state == TCP_STATE.SYN_SEND):
                 # SYN packet is sent, awaiting SYN-ACK from receiver
-                self.simulator.log("(Sender) Waiting for SYN-ACK")
-                rcv_seg = self.simulator.u_receive()
-                self.rcv_pkt.unpack(rcv_seg)
-                # if sequence number, SYN bit and acknowledgement
-                # number is correct, return an ACK packet
-                # go to ESTABLISHED state
-                if (self.rcv_pkt.syn == 1 and
-                       self.rcv_pkt.acknum == self.seqnum+1):
-                    self.seqnum = self.rcv_pkt.acknum
-                    self.acknum = self.rcv_pkt.seqnum + 1
-                    curr_data = self.get_data()
-                    self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
-                                              self.seqnum, self.acknum,
-                                              data=curr_data)
-                    bitstr = self.snd_pkt.pack()
-                    self.simulator.u_send(bitstr)
-                    self.state = TCP_STATE.ESTABLISHED
+                while(True):
+                    try:
+                        self.simulator.log("(Sender) Waiting for SYN-ACK")
+                        rcv_seg = self.simulator.u_receive()
+                        self.rcv_pkt.unpack(rcv_seg)
+                        # if the checksum is correct and the syn bit
+                        # and ACK bytes are correct go to the next step
+                        if (self.rcv_pkt.check_checksum() and
+                            self.rcv_pkt.syn == 1 and
+                            self.rcv_pkt.acknum == self.seqnum + 1):
+                            break
+                        else:
+                            self.simulator.log("(Sender) Erroneous packet!")
+                    except socket.timeout:
+                        self.simulator.log("(Sender) Resend SYN-ACK")
+                        self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
+                # The correct packet is received, go to ESTABLISHED state
+                self.seqnum = self.rcv_pkt.acknum
+                self.acknum = self.rcv_pkt.seqnum + 1
+                curr_data,_ = self.get_data()
+                self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+                                          self.seqnum, self.acknum,
+                                          data=curr_data)
+                bitstr = self.snd_pkt.pack()
+                self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
+                self.state = TCP_STATE.ESTABLISHED
             
             elif (self.state == TCP_STATE.ESTABLISHED):
                 # A connection is established between sender and receiver,
@@ -73,29 +83,41 @@ class NewSender(sender.BogoSender):
                 self.simulator.log("\t Acknowledge Num: " + str(self.acknum))
                 while (True):
                     # Waiting for an ACK packet reception
-                    rcv_seg = self.simulator.u_receive()
-                    self.rcv_pkt.unpack(rcv_seg)
-                    if (self.rcv_pkt.seqnum == self.acknum):
-                        # if ACK is successful
-                        self.simulator.log("(Sender) ACK Successful!")
-                        if (self.data_ind*8 >= len(self.data)):
-                           # if all data is transmitted, go to final state
-                           # note, when implementing SR/GBN, make sure that
-                           # the previous packets are all transmitted!
-                           self.state = TCP_STATE.FIN_WAIT_1
-                           break
-                        else: 
-                            curr_data = self.get_data()
-                            num_bytes = len(curr_data)/8
-                            self.seqnum = self.rcv_pkt.acknum
-                            self.acknum = self.rcv_pkt.seqnum + num_bytes
-                            self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
-                                                      self.seqnum, self.acknum,
-                                                      data = curr_data)
-                            bitstr = self.snd_pkt.pack()
-                            self.simulator.u_send(bitstr)
-            
-                    # Need to do something if they are not the same
+                    try:
+                        self.simulator.log("(Sender) Sent ACK waiting for next ACK")
+                        rcv_seg = self.simulator.u_receive()
+                        self.rcv_pkt.unpack(rcv_seg)
+                        if (self.rcv_pkt.check_checksum()): 
+                            self.simulator.log("(Sender) Seq Num: " +str(self.seqnum))
+                            self.simulator.log("(Sender) Ack Num received: "+str(self.snd_pkt.acknum)) 
+                        else:
+                            self.simulator.log("(Sender) Checksum Wrong!")
+                        if (self.rcv_pkt.check_checksum() and
+                            self.rcv_pkt.acknum == self.seqnum):
+                                break
+                        # checksum is not the same -- treat as a lost packet
+                        # just ignore it, same with wrong sequence number
+                    
+                    except socket.timeout:
+                        # Retransmit the packet
+                        self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
+                # all the checks passed, send the next packet
+                self.simulator.log("(Sender) ACK successful")
+                if (self.data_ind*8 >= len(self.data)):
+                    # if all the data is transmitted, go to the final state
+                    # note when implementing SR/GBN, make sure that
+                    # the previous packets are all transmitted!
+                    self.state = TCP_STATE.FIN_WAIT_1
+                    break
+                else:
+                    curr_data, num_bytes = self.get_data()
+                    self.seqnum = self.rcv_pkt.acknum
+                    self.acknum = self.rcv_pkt.seqnum + num_bytes
+                    self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+                                              self.seqnum, self.acknum,
+                                              data = curr_data)
+                    bitstr = self.snd_pkt.pack()
+                    self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
 
             elif (self.state == TCP_STATE.FIN_WAIT_1):
                 self.simulator.log("(Sender) In final waiting state")
@@ -115,7 +137,7 @@ class NewSender(sender.BogoSender):
             # else send as much as mss allows
             new_data = self.data[self.data_ind*8: (self.data_ind+self.mss) * 8]
             self.data_ind += self.mss
-        return new_data
+        return new_data, len(new_data)/8
 
 
 if __name__ == "__main__":
