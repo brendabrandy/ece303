@@ -116,9 +116,9 @@ class ChannelSimulator(object):
         if self.debug:
             logging.debug("Sending bytes through corrupting channel")
         random_errors = uniform(0, 1)
-        # swap = uniform(0, 1)
+        swap = uniform(0, 1)
         swap = 1
-        # drop = uniform(0, 1)
+        drop = uniform(0, 1)
         drop = 1
         corrupted = deepcopy(data_bytes)
         if drop < drop_error_prob:
@@ -130,6 +130,7 @@ class ChannelSimulator(object):
                 logging.debug("Dropping current frame: {}".format(data_bytes))
             return
         if random_errors < random_error_prob:
+            print "(Channel) Random errors"
             if self.debug:
                 logging.debug("Frame before random errors: {}".format(data_bytes))
             for n in xrange(len(data_bytes)):
@@ -157,7 +158,7 @@ class ChannelSimulator(object):
 
         # split data into 1024 byte frames
         for frame in slice_frames(data_bytes):
-            self.put_to_socket(self.corrupt(frame))
+            self.put_to_socket(self.corrupt(frame, random_error_prob = 0.5))
 
     def u_receive(self):
         """

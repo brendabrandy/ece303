@@ -18,7 +18,7 @@ class NewSender(sender.BogoSender):
         self.acknum = 0
         # Timeout for retransmission. Set arbitrarily to 10
         self.timeout = 10
-        self.mss = 2    # maximum segment size per TCP packet
+        self.pkt_size = 2    # maximum segment size per TCP packet
        
     # Should override BogoSender.send() function
     def send(self, data):
@@ -33,15 +33,14 @@ class NewSender(sender.BogoSender):
         while (True):   
             # A connection is established between sender and receiver,
             # can start sending data now
-            print ("SEQ: " + str(self.seqnum))
-            print ("ACK: " + str(self.acknum))
-
             # Send a new packet
             if (self.data_ind*8 <= len(self.data)):
                 # if there is more data to send, then send more data
                 curr_data, num_bytes = self.get_data()
                 self.seqnum = self.isn + self.data_ind*8
                 self.acknum = self.rcv_pkt.seqnum 
+                print ("SEQ: " + str(self.seqnum))
+                print ("ACK: " + str(self.acknum))
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                           self.seqnum, self.acknum,
                                           data = curr_data)
@@ -56,11 +55,14 @@ class NewSender(sender.BogoSender):
                     # Wait for an ACK packet
                     print("(Sender) Wait for ACK packet")
                     rcv_seg = self.simulator.u_receive()
-                    self.rcv_pkt.unpack(rcv_seg)
-                    if (not self.rcv_pkt.check_checksum(str(rcv_seg))):
+                    if (not self.rcv_pkt.check_checksum(rcv_seg)):
                         print("(Sender) Checksum incorrect! Drop packet")
-                    if (self.rcv_pkt.check_checksum(str(rcv_seg))):
+                    if (self.rcv_pkt.check_checksum(rcv_seg)):
+                        print("(Sender) Checksum correct!")
+                        self.rcv_pkt.unpack(rcv_seg)
                         self.seqnum += self.data_ind
+                        self.acknum = self.rcv_pkt.seqnum
+                        self.data_ind += self.pkt_size
                         break
                 except socket.timeout:
                     # Condition : TIMEOUT
@@ -71,14 +73,14 @@ class NewSender(sender.BogoSender):
 
 
     def get_data(self):
-        if ((self.data_ind + self.mss) > len(self.data)):
-            # if the last few segments do not meet mss, just send
+        if ((self.data_ind + self.pkt_size) > len(self.data)):
+            # if the last few segments do not meet pkt_size, just send
             # whatever is remaining 
             new_data = self.data[self.data_ind*8:]
         else:
-            # else send as much as mss allows
-            new_data = self.data[self.data_ind*8: (self.data_ind+self.mss) * 8]
-            # self.data_ind += self.mss
+            # else send as much as pkt_size allows
+            new_data = self.data[self.data_ind*8: (self.data_ind+self.pkt_size) * 8]
+            # self.data_ind += self.pkt_size
         return new_data, len(new_data)/8
 
 
@@ -86,4 +88,4 @@ if __name__ == "__main__":
     # Test NewSender
     sndr = NewSender()
 
-    sndr.send('{0:024b}'.format(5))
+    sndr.send(bytearray([68,65,84,65]))

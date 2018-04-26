@@ -125,8 +125,8 @@ class TCPsegment:
             temp = struct.unpack('>H', cs_test[i:i+2])
             check += temp[0]
         
-        self.checksum = self.checksum % (2**16)
-        if (check % (2**16-1)):
+        check = check % (2**16)
+        if (check == (2**16-1)):
             return True
         else:
             return False
