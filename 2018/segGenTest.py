@@ -59,7 +59,7 @@ class TCPsegment:
             self.data += "0"*(16-(len(self.data)%16))
         self.tcp_seg_bitstr = self.header + self.options + self.data
         self._make_checksum()
-        self.tcp_seg_bitstr = "0b" + self.tcp_seg_bitstr
+        self.tcp_seg_bitstr = bytearray(self.tcp_seg_bitstr)
         return self.tcp_seg_bitstr 
     
     # update options and headerlen
