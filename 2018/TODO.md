@@ -21,3 +21,7 @@
 * Extra timeout for receiver: The receiver also has an extra long timeout which lets it detect when the transmission end 
 * Error detection with checksums
 * Timeouts for packet drops 
+
+## Parking Lot
+*sequence number and control flags of receiver doesn't matter since only sending ACKS. Maybe restructutre TCP segment to be smaller for more throuput?
+
