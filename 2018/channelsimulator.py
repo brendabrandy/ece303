@@ -159,7 +159,7 @@ class ChannelSimulator(object):
 
         # split data into 1024 byte frames
         for frame in slice_frames(data_bytes):
-            self.put_to_socket(self.corrupt(frame, random_error_prob = 0.5))
+            self.put_to_socket(self.corrupt(frame))
 
     def u_receive(self):
         """
