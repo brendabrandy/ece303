@@ -105,5 +105,3 @@ if __name__ == "__main__":
     # Test NewReceiver
     rcvr = NewReceiver()
     rcvr.receive()
-    for w in rolling_window(xrange(6), 3):
-        print w
