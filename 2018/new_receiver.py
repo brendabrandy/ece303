@@ -23,8 +23,8 @@ class NewReceiver(receiver.BogoReceiver):
         self.isn = 2000
         self.start = time.time()
     	#initialize
-		prev_seq = 999
-		prev_num_bytes = 1
+        prev_seq = 999
+        prev_num_bytes = 1
            
 
     # Should override BogoReceiver.receiver() function
@@ -66,8 +66,8 @@ class NewReceiver(receiver.BogoReceiver):
             self.simulator.u_send(bitstr)
             self.start = time.time()
             
-            #---------------NEW CODE ---------------------------------------------------
-           	#Initialize: see lines 26, 27
+            #---------------NEW CODE ---------------------------------------------------  
+            #Initialize: see lines 26, 27
             #Go Back N
             num_bytes = len(self.rcv_pkt.data)            
             expect_seq = prev_seq + prev_num_bytes; #how to handle case if the first packet is in wrong order (aka not packet 0)? 
