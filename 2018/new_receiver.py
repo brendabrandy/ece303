@@ -22,13 +22,14 @@ class NewReceiver(receiver.BogoReceiver):
         self.closing_timeout = 180      # arbitrarily set to 3 minutes
         self.isn = 2000
         self.start = time.time()
+    
     # Should override BogoReceiver.receiver() function
     def receive(self):
         # TODO: How will the sender know that the ACK number of the receiver
         # We need some syn thingies
         # TODO: How will the receiver know that the sender stops sending?
         self.seqnum = self.isn
-        f = open("rcv_file", 'wb')
+        # f = open("rcv_file", 'wb')
         while(True):
                 
             # A connection is established between the sender and receiver

@@ -5,12 +5,15 @@
 3. In second terminal, run `python new_sender.py`
 4. Receiver should go on forever, while sender will end
 
-
 ## Todo list
 * Flow Control
-* Go-Back-N in case of packet swap
+* TCP Control in case of packet swap
 * Multiple sender multiple receiver
 * Congestion Control 
+* Setting timeouts
+
+## Experiments
+1. Simple Test case: Testing for noise and dropping, sent 2MB of data between 1TX/1RX. short timeout is 2s, packet size is 1000 data bytes. 
 
 ## Notable Stuff
 * No initial handshake because the API already handles it

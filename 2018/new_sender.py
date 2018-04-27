@@ -77,13 +77,14 @@ class NewSender(sender.BogoSender):
 if __name__ == "__main__":
     # Test NewSender
     sndr = NewSender()
-    f = open('bigfile_2MB', 'rb')
-    contents = f.read()
+    # f = open('bigfile_2MB', 'rb')
+    # contents = f.read()
     # Start sending
-    print ("Start sending")
-    start_time = time.time()
-    sndr.send(bytearray(contents))
-    stop_time = time.time()
+    # print ("Start sending")
+    # start_time = time.time()
+    sndr.send(bytearray([68,65,84,65]))
+    # sndr.send(bytearray(contents))
+    # stop_time = time.time()
     # Stop sending
-    print stop_time - start_time
+    # print stop_time - start_time
 
