@@ -1,6 +1,7 @@
 import receiver
 import random
 import socket
+import time
 from segGenTest import TCPsegment
 
 # QUESTION: DO WE NEED TO DEAL WITH MULTIPLE SENDERS AND RECEIVERS OVER THE SAME CHANNEL
@@ -18,8 +19,9 @@ class NewReceiver(receiver.BogoReceiver):
         # change. NOTE: need to deal with this overflowing
         self.seqnum = 0 # receiver sequence number (SEQ Number)
         self.acknum = 0 # sender sequence number (ACK Number)
-        self.timeout = 10
+        self.closing_timeout = 180      # arbitrarily set to 3 minutes
         self.isn = 2000
+        self.start = time.time()
     # Should override BogoReceiver.receiver() function
     def receive(self):
         # TODO: How will the sender know that the ACK number of the receiver
@@ -38,6 +40,7 @@ class NewReceiver(receiver.BogoReceiver):
                     # if the checksum and sequence number is correct
                     # send an ACK back
                     if (not self.rcv_pkt.check_checksum(rcv_seg)):
+                        self.start = time.time()
                         print ("(Receiver) Checksum Wrong!")
                     else:
                         print ("(Receiver) Checksum Correct!")
@@ -46,8 +49,11 @@ class NewReceiver(receiver.BogoReceiver):
                         break
                 except socket.timeout:
                     print ("(Receiver) Timeout! Resend ACK")
-                    self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
-                    
+                    if (len(self.snd_pkt.tcp_seg_bitstr) != 0):
+                        self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
+                    if (time.time() - self.start > self.closing_timeout) :
+                        # Very long timeout -- 3 minutes
+                        return
             # send an ACK back
             num_bytes = len(self.rcv_pkt.data)
             data = self.rcv_pkt.data
@@ -57,6 +63,7 @@ class NewReceiver(receiver.BogoReceiver):
                                       self.seqnum, self.acknum)
             bitstr = self.snd_pkt.pack()
             self.simulator.u_send(bitstr)
+            self.start = time.time()
 
 if __name__ == "__main__":
     # Test NewReceiver

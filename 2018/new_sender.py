@@ -1,6 +1,7 @@
 import sender
 import random
 import socket
+import time
 from segGenTest import TCPsegment
 
 # assume sender is server
@@ -17,9 +18,7 @@ class NewSender(sender.BogoSender):
         # See new_receiver.py for setting isn
         self.acknum = 0
         # Timeout for retransmission. Set arbitrarily to 10
-        self.timeout = 10
         self.pkt_size = 2    # maximum segment size per TCP packet
-       
     # Should override BogoSender.send() function
     def send(self, data):
         # figure out how many data packets to send
@@ -46,7 +45,6 @@ class NewSender(sender.BogoSender):
                                           data = curr_data)
                 bitstr = self.snd_pkt.pack()
                 self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
-            
             else:
                 # Finished sending all data, return the function
                 return
@@ -69,8 +67,6 @@ class NewSender(sender.BogoSender):
                     # Resend last packet
                     print("(Sender) TIMEOUT! Resend data packet")
                     self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
-            
-
 
     def get_data(self):
         if ((self.data_ind + self.pkt_size) > len(self.data)):

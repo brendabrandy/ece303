@@ -13,7 +13,7 @@ class TCPsegment:
         # seqnum and acknum, other parameters, if not specified, are initialized 
         # to their default values
         self.header = "" 
-        self.tcp_seg_bitstr = ""
+        self.tcp_seg_bitstr = bytearray()
         self.srcport = srcport          # 16-bit integer
         self.destport = destport        # 16-bit integer
         self.seqnum = seqnum            # 32-bit integer
