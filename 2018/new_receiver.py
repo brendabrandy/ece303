@@ -67,12 +67,13 @@ class NewReceiver(receiver.BogoReceiver):
             self.start = time.time()
             
             #---------------NEW CODE ---------------------------------------------------  
-            #Initialize: see lines 26, 27
-            #Go Back N
+            # Initialize: see lines 26, 27
+            # Go Back N
             num_bytes = len(self.rcv_pkt.data)            
-            expect_seq = prev_seq + prev_num_bytes; #how to handle case if the first packet is in wrong order (aka not packet 0)? 
-                                                    #sol: make init prev_seq 999 and init prev_num_bytes +1 so first expected_seq
-                                                    #is 1000, but first prev_seq is not.                                                  
+            # how to handle case if the first packet is in wrong order (aka not packet 0) 
+            expect_seq = prev_seq + prev_num_bytes; 
+            # sol: make init prev_seq 999 and init prev_num_bytes +1 so first expected_seq
+            # is 1000, but first prev_seq is not.
             if expect_seq == rcv_pkt.seqnum:
                 #send ack back
                 data = self.rcv_pkt.data

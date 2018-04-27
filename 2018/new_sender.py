@@ -17,9 +17,11 @@ class NewSender(sender.BogoSender):
         self.isn = 1000
         # See new_receiver.py for setting isn
         self.acknum = 0
-        # Timeout for retransmission. Set arbitrarily to 10
-        self.pkt_size = 1000    # maximum segment size per TCP packet
-        
+        self.pkt_size = 2   # maximum segment size per TCP packet
+        # Variables for dupack and retransmission
+        self.dupack_count = 0
+        self.tx.timer = []
+
     # Should override BogoSender.send() function
     def send(self, data):
         # figure out how many data packets to send
@@ -27,49 +29,69 @@ class NewSender(sender.BogoSender):
         # 2 is the max segment size
         # this might become an array later because multiple data can be sent
         # through a window
-        self.sendbase = 0                    # data index to check how many bytes are sent
+        self.sendbase = 0     # data index to check how many bytes are sent
         self.data = data
         self.seqnum = self.isn
+        self.dupack_count = 0
         while (True):   
-            # A connection is established between sender and receiver,
-            # can start sending data now
-            # Send a new packet
-            if (self.sendbase <= len(self.data)):
-                # if there is more data to send, then send more data
-                curr_data, num_bytes = self.get_data()
-                self.seqnum = self.isn + self.sendbase
+            # initialize curr_base to be send base
+            curr_base = self.sendbase
+            self.tx = []
+            for i in range(self.tx_window_size):
+                # calculate the position of the first byte of the data
+                # segment, which is the current base + number of bytes
+                curr_data, num_bytes = self.get_data(curr_base)
+                # if there is no data to send, break out of the loop
+                if (num_bytes == 0):
+                    break
+                # The new sequence number is the isn + current base
+                self.seqnum = self.isn + curr_base 
                 self.acknum = self.rcv_pkt.seqnum 
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                           self.seqnum, self.acknum,
                                           data = curr_data)
                 bitstr = self.snd_pkt.pack()
                 self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
-            else:
-                # Finished sending all data, return the function
-                return
+                self.tx.append((self.isn+curr_base, num_bytes))
+                curr_base += num_bytes
             while(True):
                 try:
                     # Wait for an ACK packet
                     rcv_seg = self.simulator.u_receive()
                     if (self.rcv_pkt.check_checksum(rcv_seg)):
                         self.rcv_pkt.unpack(rcv_seg)
-                        self.seqnum += self.sendbase
-                        self.acknum = self.rcv_pkt.seqnum
-                        self.sendbase += self.pkt_size
-                        break
+                        # if ack field of rcv_pkt is greater than sendbase
+                        if (self.rcv_pkt.acknum > self.sendbase):
+                            # set sendbase to acknum
+                            # This indicates that all packets up to byte acknum has been
+                            # received
+                            self.sendbase = self.rcv_pkt.acknum - self.isn
+                            self.dupack_count = 0
+                            if (self.sendbase >= len(self.data)):
+                                # last ack is received, return
+                                return
+                        else:
+                            # a duplicate ACK for already ACKed segment
+                            self.dupack_count += 1
+                            # if 3 dupacks are received
+                            if (self.dupack_count == 3):
+                                # Retransmit from where the segment is lost
+                                break
                 except socket.timeout:
                     # Condition : TIMEOUT
-                    # Resend last packet
-                    self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
+                    # resend packets again
+                    break
 
-    def get_data(self):
-        if ((self.sendbase + self.pkt_size) > len(self.data)):
+    def get_data(self, base):
+        if (base >= len(self.data)):
+            return bytearray(), 0
+        elif ((base + self.pkt_size) > len(self.data)):
             # if the last few segments do not meet pkt_size, just send
             # whatever is remaining 
-            new_data = self.data[self.sendbase:]
+            new_data = self.data[base:]
         else:
             # else send as much as pkt_size allows
-            new_data = self.data[self.sendbase: (self.sendbase+self.pkt_size)]
+            new_data = self.data[base: (base+self.pkt_size)]
             # self.sendbase += self.pkt_size
         return new_data, len(new_data)
 
