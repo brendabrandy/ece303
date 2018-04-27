@@ -22,7 +22,11 @@ class NewReceiver(receiver.BogoReceiver):
         self.closing_timeout = 180      # arbitrarily set to 3 minutes
         self.isn = 2000
         self.start = time.time()
-    
+    	#initialize
+		prev_seq = 999
+		prev_num_bytes = 1
+           
+
     # Should override BogoReceiver.receiver() function
     def receive(self):
         # TODO: How will the sender know that the ACK number of the receiver
@@ -61,8 +65,44 @@ class NewReceiver(receiver.BogoReceiver):
             bitstr = self.snd_pkt.pack()
             self.simulator.u_send(bitstr)
             self.start = time.time()
+            
+            #---------------NEW CODE ---------------------------------------------------
+           	#Initialize: see lines 26, 27
+            #Go Back N
+            num_bytes = len(self.rcv_pkt.data)            
+            expect_seq = prev_seq + prev_num_bytes; #how to handle case if the first packet is in wrong order (aka not packet 0)? 
+            										#sol: make init prev_seq 999 and init prev_num_bytes +1 so first expected_seq is 1000, but first prev_seq is not. 
+            if expect_seq == rcv_pkt.seqnum:
+                #send ack back
+                data = self.rcv_pkt.data
+                f.write(data)
+                self.seqnum = self.isn
+                self.acknum = self.rcv_pkt.seqnum  
+                self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+                                      self.seqnum, self.acknum)
+                bitstr = self.snd_pkt.pack()
+                self.simulator.u_send(bitstr)
+                self.start = time.time()
+                #update  
+                prev_seq = self.rcv_pkt.seqnum
+                prev_num_bytes = num_bytes
+            else
+	            #disgard packet i.e. don't unpack or write data to file
+	            #send dupack
+	            self.seqnum = self.isn
+                self.acknum = prev_seq
+                self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+                                      self.seqnum, self.acknum)
+                bitstr = self.snd_pkt.pack()
+                self.simulator.u_send(bitstr)
+                self.start = time.time()
+            #----------------------------------------------------------------------
+          
+           
 
 if __name__ == "__main__":
     # Test NewReceiver
     rcvr = NewReceiver()
     rcvr.receive()
+    for w in rolling_window(xrange(6), 3):
+        print w
