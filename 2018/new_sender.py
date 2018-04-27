@@ -18,7 +18,8 @@ class NewSender(sender.BogoSender):
         # See new_receiver.py for setting isn
         self.acknum = 0
         # Timeout for retransmission. Set arbitrarily to 10
-        self.pkt_size = 2    # maximum segment size per TCP packet
+        self.pkt_size = 1000    # maximum segment size per TCP packet
+        
     # Should override BogoSender.send() function
     def send(self, data):
         # figure out how many data packets to send
@@ -33,13 +34,11 @@ class NewSender(sender.BogoSender):
             # A connection is established between sender and receiver,
             # can start sending data now
             # Send a new packet
-            if (self.data_ind*8 <= len(self.data)):
+            if (self.data_ind <= len(self.data)):
                 # if there is more data to send, then send more data
                 curr_data, num_bytes = self.get_data()
                 self.seqnum = self.isn + self.data_ind*8
                 self.acknum = self.rcv_pkt.seqnum 
-                print ("SEQ: " + str(self.seqnum))
-                print ("ACK: " + str(self.acknum))
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                           self.seqnum, self.acknum,
                                           data = curr_data)
@@ -51,12 +50,8 @@ class NewSender(sender.BogoSender):
             while(True):
                 try:
                     # Wait for an ACK packet
-                    print("(Sender) Wait for ACK packet")
                     rcv_seg = self.simulator.u_receive()
-                    if (not self.rcv_pkt.check_checksum(rcv_seg)):
-                        print("(Sender) Checksum incorrect! Drop packet")
                     if (self.rcv_pkt.check_checksum(rcv_seg)):
-                        print("(Sender) Checksum correct!")
                         self.rcv_pkt.unpack(rcv_seg)
                         self.seqnum += self.data_ind
                         self.acknum = self.rcv_pkt.seqnum
@@ -65,23 +60,30 @@ class NewSender(sender.BogoSender):
                 except socket.timeout:
                     # Condition : TIMEOUT
                     # Resend last packet
-                    print("(Sender) TIMEOUT! Resend data packet")
                     self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
 
     def get_data(self):
         if ((self.data_ind + self.pkt_size) > len(self.data)):
             # if the last few segments do not meet pkt_size, just send
             # whatever is remaining 
-            new_data = self.data[self.data_ind*8:]
+            new_data = self.data[self.data_ind:]
         else:
             # else send as much as pkt_size allows
-            new_data = self.data[self.data_ind*8: (self.data_ind+self.pkt_size) * 8]
+            new_data = self.data[self.data_ind: (self.data_ind+self.pkt_size)]
             # self.data_ind += self.pkt_size
-        return new_data, len(new_data)/8
+        return new_data, len(new_data)
 
 
 if __name__ == "__main__":
     # Test NewSender
     sndr = NewSender()
+    f = open('bigfile_2MB', 'rb')
+    contents = f.read()
+    # Start sending
+    print ("Start sending")
+    start_time = time.time()
+    sndr.send(bytearray(contents))
+    stop_time = time.time()
+    # Stop sending
+    print stop_time - start_time
 
-    sndr.send(bytearray([68,65,84,65]))

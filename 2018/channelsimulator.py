@@ -122,7 +122,6 @@ class ChannelSimulator(object):
         drop = 1
         corrupted = deepcopy(data_bytes)
         if drop < drop_error_prob:
-            print "(Channel) Packet dropped"
             if self.debug:
                 logging.debug("Dropping delayed and swapped frames: {}".format(self.swap))
             self.swap.clear()
@@ -131,7 +130,6 @@ class ChannelSimulator(object):
                 logging.debug("Dropping current frame: {}".format(data_bytes))
             return
         if random_errors < random_error_prob:
-            print "(Channel) Random errors"
             if self.debug:
                 logging.debug("Frame before random errors: {}".format(data_bytes))
             for n in xrange(len(data_bytes)):

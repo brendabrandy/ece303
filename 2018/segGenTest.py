@@ -8,7 +8,7 @@ class TCPsegment:
 
     def __init__(self, srcport, destport, seqnum, acknum, headerlen=5,
                  urg=0, ack=0, psh=0,rst=0, syn=0, fin=0, rcvwin= 0,
-                 urgdataptr=0, data=""):
+                 urgdataptr=0, data=bytearray()):
         # Initializer, only four parameters are required: srcport, destport,
         # seqnum and acknum, other parameters, if not specified, are initialized 
         # to their default values
@@ -57,7 +57,7 @@ class TCPsegment:
         self.header[14:16] = struct.pack('>H', self.rcvwin)         # rcvwin: 2 bytes
         self.header[16:18] = struct.pack('>xx')     # checksum : 2 bytes (set to zero)
         self.header[18:20] = struct.pack('>H', self.urgdataptr)     # urgdataptr: 2 bytes
-        self.tcp_seg_bitstr = bytearray(self.header+self.options+self.data)
+        self.tcp_seg_bitstr = self.header+self.options+self.data
         self._make_checksum()
         return self.tcp_seg_bitstr 
     
