@@ -27,17 +27,17 @@ class NewSender(sender.BogoSender):
         # 2 is the max segment size
         # this might become an array later because multiple data can be sent
         # through a window
-        self.data_ind = 0                    # data index to check how many bytes are sent
+        self.sendbase = 0                    # data index to check how many bytes are sent
         self.data = data
         self.seqnum = self.isn
         while (True):   
             # A connection is established between sender and receiver,
             # can start sending data now
             # Send a new packet
-            if (self.data_ind <= len(self.data)):
+            if (self.sendbase <= len(self.data)):
                 # if there is more data to send, then send more data
                 curr_data, num_bytes = self.get_data()
-                self.seqnum = self.isn + self.data_ind*8
+                self.seqnum = self.isn + self.sendbase
                 self.acknum = self.rcv_pkt.seqnum 
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                           self.seqnum, self.acknum,
@@ -53,9 +53,9 @@ class NewSender(sender.BogoSender):
                     rcv_seg = self.simulator.u_receive()
                     if (self.rcv_pkt.check_checksum(rcv_seg)):
                         self.rcv_pkt.unpack(rcv_seg)
-                        self.seqnum += self.data_ind
+                        self.seqnum += self.sendbase
                         self.acknum = self.rcv_pkt.seqnum
-                        self.data_ind += self.pkt_size
+                        self.sendbase += self.pkt_size
                         break
                 except socket.timeout:
                     # Condition : TIMEOUT
@@ -63,14 +63,14 @@ class NewSender(sender.BogoSender):
                     self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
 
     def get_data(self):
-        if ((self.data_ind + self.pkt_size) > len(self.data)):
+        if ((self.sendbase + self.pkt_size) > len(self.data)):
             # if the last few segments do not meet pkt_size, just send
             # whatever is remaining 
-            new_data = self.data[self.data_ind:]
+            new_data = self.data[self.sendbase:]
         else:
             # else send as much as pkt_size allows
-            new_data = self.data[self.data_ind: (self.data_ind+self.pkt_size)]
-            # self.data_ind += self.pkt_size
+            new_data = self.data[self.sendbase: (self.sendbase+self.pkt_size)]
+            # self.sendbase += self.pkt_size
         return new_data, len(new_data)
 
 
