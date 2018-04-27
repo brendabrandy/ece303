@@ -8,11 +8,13 @@
 
 ## Todo list
 * Flow Control
-* Ending Data transmission
 * Go-Back-N in case of packet swap
 * Multiple sender multiple receiver
+* Congestion Control 
 
 ## Notable Stuff
-* Error detection
-* Checksum calculation
+* No initial handshake because the API already handles it
+* Timeouts: Both sender and receiver has a timeout of 5 seconds (might be subjected to change)
+* Extra timeout for receiver: The receiver also has an extra long timeout which lets it detect when the transmission end 
+* Error detection with checksums
 * Timeouts for packet drops 
