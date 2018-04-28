@@ -19,7 +19,7 @@ class NewReceiver(receiver.BogoReceiver):
         # change. NOTE: need to deal with this overflowing
         self.seqnum = 0 # receiver sequence number (SEQ Number)
         self.acknum = 0 # sender sequence number (ACK Number)
-        self.closing_timeout = 180      # arbitrarily set to 3 minutes
+        self.closing_timeout = 30      # arbitrarily set to 1 minutes
         self.isn = 0
         self.start = time.time()
     	#initialize
@@ -33,6 +33,7 @@ class NewReceiver(receiver.BogoReceiver):
         # We need some syn thingies
         # TODO: How will the receiver know that the sender stops sending?
         self.seqnum = self.isn
+        self.simulator.rcvr_socket.settimeout(0.5)
         f = open("rcv_file", 'wb')
         while(True):
                 
@@ -53,6 +54,7 @@ class NewReceiver(receiver.BogoReceiver):
                         self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
                     if (time.time() - self.start > self.closing_timeout) :
                         # Very long timeout -- 3 minutes
+                        f.close()
                         return
             
             """ #OLD CODE ----------
