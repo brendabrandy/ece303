@@ -5,12 +5,13 @@
 touch difflog.txt
 
 for i in {1..10}; do
+    echo $i
 	python new_receiver.py &
 	proc1=$!
 	python new_sender.py
 	wait $proc1
 	sleep .1
-	DIFF=$(diff rcv_file bigFile_2MB) 
+	DIFF=$(diff rcv_file mediumFile.txt) 
 	if [ "$DIFF" == "" ] 
 	then
 	    #echo "The directory was NOT modified"

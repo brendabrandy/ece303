@@ -19,11 +19,11 @@ class NewReceiver(receiver.BogoReceiver):
         # change. NOTE: need to deal with this overflowing
         self.seqnum = 0 # receiver sequence number (SEQ Number)
         self.acknum = 0 # sender sequence number (ACK Number)
-        self.closing_timeout = 30      # arbitrarily set to 1 minutes
+        self.closing_timeout = 0.4      # arbitrarily set to 1 minutes
         self.isn = 0
         self.start = time.time()
     	#initialize
-        self.prev_seq = 1000
+        self.prev_seq = 0
         self.prev_num_bytes = 0
            
 
@@ -45,15 +45,20 @@ class NewReceiver(receiver.BogoReceiver):
                     # if the checksum and sequence number is correct
                     # send an ACK back
                     if (not self.rcv_pkt.check_checksum(rcv_seg)):
+                        # print "(Receiver) Checksum incorrect"
                         self.start = time.time()
                     else:
+                        # print "(Receiver) Checksum correct"
                         self.rcv_pkt.unpack(rcv_seg)
                         break
                 except socket.timeout:
+                    # print "(Receiver) Socket timeout"
                     if (len(self.snd_pkt.tcp_seg_bitstr) != 0):
+                        # print "(Receiver) Resend ACK" + str(self.snd_pkt.acknum)
                         self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
                     if (time.time() - self.start > self.closing_timeout) :
                         # Very long timeout -- 3 minutes
+                        # print "(Receiver) Receiver closing"
                         f.close()
                         return
             
@@ -83,7 +88,8 @@ class NewReceiver(receiver.BogoReceiver):
                 data = self.rcv_pkt.data
                 f.write(data)
                 #self.seqnum = self.isn
-                self.acknum = self.rcv_pkt.seqnum + num_bytes   
+                self.acknum = self.rcv_pkt.seqnum + num_bytes 
+                # print "(Receiver) Sending ACK" + str(self.acknum)
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                       self.seqnum, self.acknum)
                 bitstr = self.snd_pkt.pack()
@@ -96,6 +102,7 @@ class NewReceiver(receiver.BogoReceiver):
 	            #disgard packet i.e. don't unpack or write data to file
 	            #send dupack
 	            #self.seqnum = self.isn
+                # print "(Receiver) Lost packet detected"
                 self.acknum = expect_seq
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                       self.seqnum, self.acknum)

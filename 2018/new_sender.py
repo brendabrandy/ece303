@@ -15,7 +15,7 @@ class NewSender(sender.BogoSender):
         self.snd_pkt = TCPsegment(0,0,0,0)
         self.rcv_pkt = TCPsegment(0,0,0,0)
         self.seqnum = 0
-        self.isn = 1000
+        self.isn = 0
         # See new_receiver.py for setting isn
         self.acknum = 0
         self.pkt_size = 1000   # maximum segment size per TCP packet
@@ -32,7 +32,7 @@ class NewSender(sender.BogoSender):
         self.sample_rtt_start = 0   # Sample RTT measurement start time
         self.alpha = 0.1  # decay factor of EVMA of estimated_rtt
         self.beta = 0.25    # decay factor of EWMA of dev_rtt
-        self.timeout_interval = self.sample_rtt + 4 * self.dev_rtt
+        self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
         self.sendbase = 0 
         
         # Variables for Congestion control
@@ -56,7 +56,7 @@ class NewSender(sender.BogoSender):
         self.sendbase = 0     # data index to check how many bytes are sent
         self.data = data
         self.sendend = self.sendbase + self.tx_window_size
-        self.seqnum = self.isn
+        self.seqnum = 0
         self.dupack_count = 0
         self.simulator.sndr_socket.settimeout(self.timeout_interval)
         self.is_measuring_rtt = False
@@ -69,6 +69,7 @@ class NewSender(sender.BogoSender):
             curr_base = self.sendbase * self.pkt_size
             self.sendend = self.sendbase + self.tx_window_size
             self.tx = []
+            # print "(Sender) curr_base: " + str(curr_base)
             if (self.is_congested):
                 # Multiplicative decrease
                 if (self.tx_window_size > 1):
@@ -78,9 +79,9 @@ class NewSender(sender.BogoSender):
                 self.tx_window_size += 1
             self.tx_size_collected.append(self.tx_window_size)
             self.sample_tx_pt.append(self.transmission_rounds)
-
+            self.dupack_count = 0
             self.transmission_rounds += 1
-            
+            self.is_measuring_rtt = False 
             for i in range(self.tx_window_size):
                 
                 # calculate the position of the first byte of the data
@@ -93,30 +94,33 @@ class NewSender(sender.BogoSender):
                 # The new sequence number is the isn + current base
                 self.seqnum = self.isn + curr_base 
                 self.acknum = self.rcv_pkt.seqnum 
+                # print "(Sender) Sent seqnum " + str(self.seqnum)
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                           self.seqnum, self.acknum,
                                           data = curr_data)
                 bitstr = self.snd_pkt.pack()
                 self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
                 
-                if not self.is_measuring_rtt:
-                    # if I'm not measuring RTT right now, start measuring
-                    self.is_measuring_rtt = True
-                    self.sample_rtt_start = time.time()
-                    self.sample_acknum = curr_base + num_bytes
-
                 self.tx.append((self.isn+curr_base, num_bytes))
                 curr_base += num_bytes
-            self.sample_acknum = curr_base
+            if not self.is_measuring_rtt:
+                self.is_measuring_rtt = True
+                self.sample_rtt_start = time.time()
+                self.sample_acknum = curr_base
+            # self.sendbase = self.sendbase + 1
             while(True):
                 try:
                     # Wait for an ACK packet
+                    # print "(Sender) Trying to receive packets"
                     rcv_seg = self.simulator.u_receive()
                     if (self.rcv_pkt.check_checksum(rcv_seg)):
+                        # print "(Sender) Checksum correct"
                         self.rcv_pkt.unpack(rcv_seg)
+                        # print "(Sender) Expect Greater than" + str(self.sendbase) + "\t Got ACK" + str(self.rcv_pkt.acknum)
+                        # print "(Sender) Ending at " + str(self.sendend)
                         # if ack field of rcv_pkt is greater than sendbase
-                        if (self.rcv_pkt.acknum > self.sendbase):
-                            self.sendbase = (self.rcv_pkt.acknum - self.isn)/self.pkt_size
+                        if (self.rcv_pkt.acknum/1000 > self.sendbase):
+                            self.sendbase = self.rcv_pkt.acknum /self.pkt_size
                             if (self.rcv_pkt.acknum == self.sample_acknum and 
                                 self.is_measuring_rtt):
                                 # if I am measuring the RTT
@@ -129,9 +133,11 @@ class NewSender(sender.BogoSender):
                                 self.is_measuring_rtt = False
                                 self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
                                 self.simulator.rcvr_socket.settimeout(self.timeout_interval)
+                                # print "New timeout : " + str(self.timeout_interval)
                                 # for data collection and data viz
+                                self.is_measuring_rtt = False
                                 self.sample_rtt_collected.append(self.sample_rtt)
-                                self.sample_pt.append(self.sendbase)
+                                self.sample_pt.append(self.sample_acknum)
                                 self.estimated_rtt_collected.append(self.estimated_rtt)
                             # set sendbase to acknum
                             # This indicates that all packets up to byte acknum has been
@@ -139,29 +145,46 @@ class NewSender(sender.BogoSender):
                             self.dupack_count = 0
                             if (self.sendbase >= len(self.data)/self.pkt_size):
                                 # last ack is received, return
+                                self.is_measuring_rtt = False
                                 return
                             if (self.sendbase == self.sendend):
                                 self.is_congested = False
+                                self.is_measuring_rtt = False
                                 break
                         else:
                             # a duplicate ACK for already ACKed segment
                             self.dupack_count += 1
+                            # print "(Sender) Got Dupack" + str(self.dupack_count) 
                             # if 3 dupacks are received
-                            if (self.dupack_count == 3):
+                            if (self.dupack_count >= 3):
                                 self.is_congested = True
                                 # Retransmit from where the segment is lost
                                 self.is_measuring_rtt = False
                                 break
                     else:
+                        self.is_measuring_rtt = False
                         self.is_congested = True
                 except socket.timeout:
                     # Condition : TIMEOUT
                     # resend packets again
                     self.is_congested = True
+                    # recalculate estimated and dev_rtt
                     self.is_measuring_rtt = False
+                    """
+                    self.sample_rtt = time.time() - self.sample_rtt_start
+                    self.estimated_rtt  = (1 - self.alpha) * self.estimated_rtt \
+                                            + self.alpha * self.sample_rtt
+                    self.dev_rtt = (1 - self.beta) * self.dev_rtt + \
+                                    self.beta * abs(self.sample_rtt - self.estimated_rtt)
+                    self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
+                    
+                    print "(Sender) New timeout after timeout: " + str(self.timeout_interval)
+                    self.simulator.rcvr_socket.settimeout(self.timeout_interval)
+                    self.sample_rtt_collected.append(self.timeout_interval)
+                    self.sample_pt.append(self.sample_acknum)
+                    self.estimated_rtt_collected.append(self.estimated_rtt)
+                    """
                     break
-
-        self.plot_rtt()
 
     def plot_stats(self):
         plt.figure()
@@ -196,17 +219,18 @@ class NewSender(sender.BogoSender):
 if __name__ == "__main__":
     # Test NewSender
     sndr = NewSender()
-    f = open('bigFile_2MB', 'rb')
+    f = open('mediumFile.txt', 'rb')
     contents = f.read()
-    print "Sending " + str(len(contents)) + " bytes of data"
+    # print "Sending " + str(len(contents)) + " bytes of data"
     # Start sending
-    print ("Start sending")
+    # print ("Start sending")
     start_time = time.time()
     # sndr.send(bytearray([72,101,108,108,111,32,87,111,114,108,100]))
     sndr.send(bytearray(contents))
     stop_time = time.time()
     # Stop sending
-    sndr.plot_stats()
+    # sndr.plot_stats()
     mytime = stop_time - start_time
-    print mytime
-    print "Throughput: " +str(len(contents)/mytime)
+    # print mytime
+    f.close()
+    print str(len(contents)/mytime)
