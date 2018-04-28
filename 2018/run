@@ -1,0 +1,24 @@
+#!/bin/bash
+
+#change new_receiver.py longtimeout to like 1 second
+
+touch difflog.txt
+
+for i in {1..5}; do
+	python new_receiver.py &
+	proc1=$!
+	python new_sender.py
+	wait $proc1
+	sleep .5
+	DIFF=$(diff rcv_file bigFile_2MB) 
+	if [ "$DIFF" == "" ] 
+	then
+	    #echo "The directory was NOT modified"
+	    echo 1 >> difflog.txt
+	fi
+	if [ "$DIFF" != "" ] 
+	then
+	    #echo "The directory was modified"
+	    echo 0 >> difflog.txt
+	fi
+done
