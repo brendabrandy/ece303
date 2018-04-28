@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#change new_receiver.py longtimeout to like 1 second
+#change new_receiver.py longtimeout to like 0.4 second
 
 touch difflog.txt
 
