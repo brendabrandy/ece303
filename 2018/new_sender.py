@@ -17,11 +17,11 @@ class NewSender(sender.BogoSender):
         self.isn = 1000
         # See new_receiver.py for setting isn
         self.acknum = 0
-        self.pkt_size = 2   # maximum segment size per TCP packet
+        self.pkt_size = 1000   # maximum segment size per TCP packet
         # Variables for dupack and retransmission
         self.dupack_count = 0
-        self.tx.timer = []
-
+        self.tx_window_size = 4
+        self.sendend = 0
     # Should override BogoSender.send() function
     def send(self, data):
         # figure out how many data packets to send
@@ -31,11 +31,13 @@ class NewSender(sender.BogoSender):
         # through a window
         self.sendbase = 0     # data index to check how many bytes are sent
         self.data = data
+        self.sendend = self.sendbase + self.tx_window_size
         self.seqnum = self.isn
         self.dupack_count = 0
         while (True):   
             # initialize curr_base to be send base
-            curr_base = self.sendbase
+            curr_base = self.sendbase * self.pkt_size
+            self.sendend = self.sendbase + self.tx_window_size
             self.tx = []
             for i in range(self.tx_window_size):
                 # calculate the position of the first byte of the data
@@ -50,6 +52,9 @@ class NewSender(sender.BogoSender):
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                           self.seqnum, self.acknum,
                                           data = curr_data)
+                if (curr_base == 0):
+                    # add a syn bit to the packet if it is not sent
+                    self.snd_pkt.syn = 1
                 bitstr = self.snd_pkt.pack()
                 self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
                 self.tx.append((self.isn+curr_base, num_bytes))
@@ -65,11 +70,13 @@ class NewSender(sender.BogoSender):
                             # set sendbase to acknum
                             # This indicates that all packets up to byte acknum has been
                             # received
-                            self.sendbase = self.rcv_pkt.acknum - self.isn
+                            self.sendbase = (self.rcv_pkt.acknum - self.isn)/self.pkt_size
                             self.dupack_count = 0
-                            if (self.sendbase >= len(self.data)):
+                            if (self.sendbase >= len(self.data)/self.pkt_size):
                                 # last ack is received, return
                                 return
+                            if (self.sendbase == self.sendend):
+                                break
                         else:
                             # a duplicate ACK for already ACKed segment
                             self.dupack_count += 1
@@ -99,14 +106,14 @@ class NewSender(sender.BogoSender):
 if __name__ == "__main__":
     # Test NewSender
     sndr = NewSender()
-    # f = open('bigfile_2MB', 'rb')
-    # contents = f.read()
+    f = open('bigfile_2MB', 'rb')
+    contents = f.read()
     # Start sending
-    # print ("Start sending")
-    # start_time = time.time()
-    sndr.send(bytearray([68,65,84,65]))
-    # sndr.send(bytearray(contents))
-    # stop_time = time.time()
+    print ("Start sending")
+    start_time = time.time()
+    # sndr.send(bytearray([72,101,108,108,111,32,87,111,114,108,100]))
+    sndr.send(bytearray(contents))
+    stop_time = time.time()
     # Stop sending
-    # print stop_time - start_time
+    print stop_time - start_time
 

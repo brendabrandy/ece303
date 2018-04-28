@@ -23,8 +23,8 @@ class NewReceiver(receiver.BogoReceiver):
         self.isn = 0
         self.start = time.time()
     	#initialize
-        prev_seq = 1000
-        prev_num_bytes = 0
+        self.prev_seq = 1000
+        self.prev_num_bytes = 0
            
 
     # Should override BogoReceiver.receiver() function
@@ -33,7 +33,7 @@ class NewReceiver(receiver.BogoReceiver):
         # We need some syn thingies
         # TODO: How will the receiver know that the sender stops sending?
         self.seqnum = self.isn
-        # f = open("rcv_file", 'wb')
+        f = open("rcv_file", 'wb')
         while(True):
                 
             # A connection is established between the sender and receiver
@@ -74,9 +74,9 @@ class NewReceiver(receiver.BogoReceiver):
             # Go Back N
             num_bytes = len(self.rcv_pkt.data)            
             # how to handle case if the first packet is in wrong order (aka not packet 1000) ? 
-            expect_seq = prev_seq + prev_num_bytes; 
+            expect_seq = self.prev_seq + self.prev_num_bytes 
             # sol: 
-            if expect_seq == rcv_pkt.seqnum:
+            if expect_seq == self.rcv_pkt.seqnum:
                 #send ack back
                 data = self.rcv_pkt.data
                 f.write(data)
@@ -86,20 +86,20 @@ class NewReceiver(receiver.BogoReceiver):
                                       self.seqnum, self.acknum)
                 bitstr = self.snd_pkt.pack()
                 self.simulator.u_send(bitstr)
-                self.start = time.time()
                 #update  
-                prev_seq = self.rcv_pkt.seqnum
-                prev_num_bytes = num_bytes
+                self.prev_seq = self.rcv_pkt.seqnum
+                self.prev_num_bytes = num_bytes
+                self.start = time.time()
             else:   
 	            #disgard packet i.e. don't unpack or write data to file
 	            #send dupack
 	            #self.seqnum = self.isn
-	            self.acknum = expect_seq
-	            self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+                self.acknum = expect_seq
+                self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                       self.seqnum, self.acknum)
-	            bitstr = self.snd_pkt.pack()
-	            self.simulator.u_send(bitstr)
-	            self.start = time.time()
+                bitstr = self.snd_pkt.pack()
+                self.simulator.u_send(bitstr)
+                self.start = time.time()
             #----------------------------------------------------------------------
           
            
