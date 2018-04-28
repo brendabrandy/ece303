@@ -166,12 +166,16 @@ class NewSender(sender.BogoSender):
     def plot_stats(self):
         plt.figure()
         plt.title("RTT Estimations")
+        plt.xlabel("Byte location")
+        plt.ylabel("RTT (s)")
         plt.plot(self.sample_pt, self.sample_rtt_collected,'o-',label="Sample RTT")
         plt.plot(self.sample_pt, self.estimated_rtt_collected, 'o-', label="Estimated RTT")
         plt.legend()
-   
+         
         plt.figure()
-        plt.title("TX Window size")
+        plt.title("Congestion Window size")
+        plt.xlabel("Transmission Round")
+        plt.ylabel("Number of Segments")
         plt.plot(self.sample_tx_pt, self.tx_size_collected, 'o-')
         plt.show()
 
@@ -192,7 +196,7 @@ class NewSender(sender.BogoSender):
 if __name__ == "__main__":
     # Test NewSender
     sndr = NewSender()
-    f = open('bigfile_2MB', 'rb')
+    f = open('bigFile_2MB', 'rb')
     contents = f.read()
     print "Sending " + str(len(contents)) + " bytes of data"
     # Start sending
