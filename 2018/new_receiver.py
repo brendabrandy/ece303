@@ -19,7 +19,7 @@ class NewReceiver(receiver.BogoReceiver):
         # change. NOTE: need to deal with this overflowing
         self.seqnum = 0 # receiver sequence number (SEQ Number)
         self.acknum = 0 # sender sequence number (ACK Number)
-        self.closing_timeout = 0.4      # arbitrarily set to 1 minutes
+        self.closing_timeout = 10      # arbitrarily set to 1 minutes
         self.isn = 0
         self.start = time.time()
     	#initialize
@@ -58,7 +58,7 @@ class NewReceiver(receiver.BogoReceiver):
                         self.simulator.u_send(self.snd_pkt.tcp_seg_bitstr)
                     if (time.time() - self.start > self.closing_timeout) :
                         # Very long timeout -- 3 minutes
-                        # print "(Receiver) Receiver closing"
+                        print "(Receiver) Receiver closing"
                         f.close()
                         return
             

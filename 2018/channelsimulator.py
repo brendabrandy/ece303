@@ -54,7 +54,6 @@ class ChannelSimulator(object):
         :param debug_level: debug level for logging (e.g. logging.DEBUG)
         :param ip_addr: destination IP
         """
-
         self.ip = ip_addr
         self.sndr_socket = None
         self.rcvr_socket = None

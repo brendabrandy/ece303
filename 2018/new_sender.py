@@ -169,8 +169,8 @@ class NewSender(sender.BogoSender):
                     # resend packets again
                     self.is_congested = True
                     # recalculate estimated and dev_rtt
-                    self.is_measuring_rtt = False
                     """
+                    self.is_measuring_rtt = False
                     self.sample_rtt = time.time() - self.sample_rtt_start
                     self.estimated_rtt  = (1 - self.alpha) * self.estimated_rtt \
                                             + self.alpha * self.sample_rtt
