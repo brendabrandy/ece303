@@ -20,11 +20,11 @@ class NewReceiver(receiver.BogoReceiver):
         self.seqnum = 0 # receiver sequence number (SEQ Number)
         self.acknum = 0 # sender sequence number (ACK Number)
         self.closing_timeout = 180      # arbitrarily set to 3 minutes
-        self.isn = 2000
+        self.isn = 0
         self.start = time.time()
     	#initialize
-        prev_seq = 999
-        prev_num_bytes = 1
+        prev_seq = 1000
+        prev_num_bytes = 0
            
 
     # Should override BogoReceiver.receiver() function
@@ -54,6 +54,8 @@ class NewReceiver(receiver.BogoReceiver):
                     if (time.time() - self.start > self.closing_timeout) :
                         # Very long timeout -- 3 minutes
                         return
+            
+            """ #OLD CODE ----------
             # send an ACK back
             num_bytes = len(self.rcv_pkt.data)
             data = self.rcv_pkt.data
@@ -65,21 +67,21 @@ class NewReceiver(receiver.BogoReceiver):
             bitstr = self.snd_pkt.pack()
             self.simulator.u_send(bitstr)
             self.start = time.time()
+            ----------- """
             
             #---------------NEW CODE ---------------------------------------------------  
             # Initialize: see lines 26, 27
             # Go Back N
             num_bytes = len(self.rcv_pkt.data)            
-            # how to handle case if the first packet is in wrong order (aka not packet 0) 
+            # how to handle case if the first packet is in wrong order (aka not packet 1000) ? 
             expect_seq = prev_seq + prev_num_bytes; 
-            # sol: make init prev_seq 999 and init prev_num_bytes +1 so first expected_seq
-            # is 1000, but first prev_seq is not.
+            # sol: 
             if expect_seq == rcv_pkt.seqnum:
                 #send ack back
                 data = self.rcv_pkt.data
                 f.write(data)
-                self.seqnum = self.isn
-                self.acknum = self.rcv_pkt.seqnum  
+                #self.seqnum = self.isn
+                self.acknum = self.rcv_pkt.seqnum + num_bytes   
                 self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                       self.seqnum, self.acknum)
                 bitstr = self.snd_pkt.pack()
@@ -88,16 +90,16 @@ class NewReceiver(receiver.BogoReceiver):
                 #update  
                 prev_seq = self.rcv_pkt.seqnum
                 prev_num_bytes = num_bytes
-            else
+            else:   
 	            #disgard packet i.e. don't unpack or write data to file
 	            #send dupack
-	            self.seqnum = self.isn
-                self.acknum = prev_seq
-                self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
+	            #self.seqnum = self.isn
+	            self.acknum = expect_seq
+	            self.snd_pkt = TCPsegment(self.inbound_port, self.outbound_port,
                                       self.seqnum, self.acknum)
-                bitstr = self.snd_pkt.pack()
-                self.simulator.u_send(bitstr)
-                self.start = time.time()
+	            bitstr = self.snd_pkt.pack()
+	            self.simulator.u_send(bitstr)
+	            self.start = time.time()
             #----------------------------------------------------------------------
           
            
