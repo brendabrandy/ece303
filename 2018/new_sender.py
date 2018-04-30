@@ -2,23 +2,22 @@ import sender
 import random
 import socket
 import time
+import sys
 import matplotlib.pyplot as plt
 from segGenTest import TCPsegment
 
 # assume sender is server
 class NewSender(sender.BogoSender):
 
-    # Constructor, currently using the default constructor
-    # from sender
     def __init__(self):
         super(NewSender, self).__init__()
         self.snd_pkt = TCPsegment(0,0,0,0)
         self.rcv_pkt = TCPsegment(0,0,0,0)
         self.seqnum = 0
         self.isn = 0
-        # See new_receiver.py for setting isn
         self.acknum = 0
-        self.pkt_size = 1000   # maximum segment size per TCP packet
+        # Arbitraily set max segment size to 1000 bytes
+        self.pkt_size = 1000  
         # Variables for dupack and retransmission
         self.dupack_count = 0
         self.tx_window_size = 4
@@ -28,11 +27,11 @@ class NewSender(sender.BogoSender):
         self.dev_rtt = 0.0005                  # deviant RTT, used to calculate timeout
         self.sample_rtt = 0.002                # sample RTT, used to calculate RTTs
         self.is_measuring_rtt = False   # check whether I am currently measuring RTT
-        self.sample_acknum = 0      # track which acknum TCP is measuring
+        self.sample_acknum = 0      # track which ack is being expected
         self.sample_rtt_start = 0   # Sample RTT measurement start time
-        self.alpha = 0.1  # decay factor of EVMA of estimated_rtt
+        self.alpha = 0.1    # decay factor of EWMA of estimated_rtt
         self.beta = 0.25    # decay factor of EWMA of dev_rtt
-        self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
+        self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt # 
         self.sendbase = 0 
         
         # Variables for Congestion control
@@ -168,24 +167,9 @@ class NewSender(sender.BogoSender):
                     # Condition : TIMEOUT
                     # resend packets again
                     self.is_congested = True
-                    # recalculate estimated and dev_rtt
-                    """
-                    self.is_measuring_rtt = False
-                    self.sample_rtt = time.time() - self.sample_rtt_start
-                    self.estimated_rtt  = (1 - self.alpha) * self.estimated_rtt \
-                                            + self.alpha * self.sample_rtt
-                    self.dev_rtt = (1 - self.beta) * self.dev_rtt + \
-                                    self.beta * abs(self.sample_rtt - self.estimated_rtt)
-                    self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
-                    
-                    print "(Sender) New timeout after timeout: " + str(self.timeout_interval)
-                    self.simulator.rcvr_socket.settimeout(self.timeout_interval)
-                    self.sample_rtt_collected.append(self.timeout_interval)
-                    self.sample_pt.append(self.sample_acknum)
-                    self.estimated_rtt_collected.append(self.estimated_rtt)
-                    """
                     break
 
+    # plot RTT and Congestion window size during one transmission
     def plot_stats(self):
         plt.figure()
         plt.title("RTT Estimations")
@@ -202,6 +186,8 @@ class NewSender(sender.BogoSender):
         plt.plot(self.sample_tx_pt, self.tx_size_collected, 'o-')
         plt.show()
 
+    # obtain segments of data from the overall data.
+    # The base is the index of the first byte I want to obtain
     def get_data(self, base):
         if (base >= len(self.data)):
             return bytearray(), 0
@@ -212,25 +198,24 @@ class NewSender(sender.BogoSender):
         else:
             # else send as much as pkt_size allows
             new_data = self.data[base: (base+self.pkt_size)]
-            # self.sendbase += self.pkt_size
         return new_data, len(new_data)
 
 
 if __name__ == "__main__":
     # Test NewSender
     sndr = NewSender()
-    f = open('mediumFile.txt', 'rb')
+    f = open(sys.argv[1], 'rb')
     contents = f.read()
-    # print "Sending " + str(len(contents)) + " bytes of data"
-    # Start sending
-    # print ("Start sending")
     start_time = time.time()
+    # Send DEADBEEF for testing
     # sndr.send(bytearray([72,101,108,108,111,32,87,111,114,108,100]))
+    # Send contents from f
     sndr.send(bytearray(contents))
     stop_time = time.time()
     # Stop sending
-    # sndr.plot_stats()
+    sndr.plot_stats()
     mytime = stop_time - start_time
     # print mytime
     f.close()
+    # print throughput
     print str(len(contents)/mytime)
